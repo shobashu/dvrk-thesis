@@ -6,3 +6,4 @@
 - Figures live in figures/, referenced as figures/<name>.png — copy finished
   plots here from the dvrk_shujiro code repo; do not link across repos
 - Keep each section file self-contained under its own \section heading
+- Follow the formatting/structure/style rules in docs/thesis_style_guide.md for all thesis writing.
