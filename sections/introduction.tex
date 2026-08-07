@@ -1,70 +1,76 @@
 \section{Introduction}
 
 \subsection{Scope}
+\label{subsec:scope}
 
-This thesis makes one deliberate scope decision: it scores performance on a
-single, well-defined task, not global surgical skill. Task scoring reduces
-the problem to metrics that are objective and computable in real time --
-completion time, path length, angular displacement, object state. Surgical
-skill is broader, harder to define, and harder to measure objectively. Task
-scoring is also solvable within a six-month thesis; general skill assessment
-is not. This choice, not a limitation discovered later, shapes every design
-decision in the chapters that follow.
+This thesis makes one deliberate scope decision: it measures performance
+on a single, well-defined task, not global surgical skill. Task-level
+metrics -- completion time, path length, angular displacement, object
+state -- are objective and computable in real time. A global skill
+judgment is neither. Surgical skill is broader, harder to define, and
+harder to measure objectively. This choice shapes every design decision
+that follows -- it is not a limitation discovered later.
 
 \subsection{Goal}
 
-The goal is real-time assessment of task performance on the da Vinci
-Research Kit (dVRK), delivered as feedback during the task rather than
-through post-hoc review. The target task is peg transfer: the trainee moves
-a cylinder between pegs on a task pad under stereo endoscopic vision.
+The goal is real-time monitoring of dVRK task performance. Feedback
+reaches the trainee during the task, not through post-hoc review. The
+target task is peg transfer: the trainee moves a cylinder between pegs on
+a task pad under stereo endoscopic vision.
 
-The system scores each trial automatically and objectively, without a human
-rater in the loop. Four measures form the score: completion time, path
-length of the instrument tip, angular displacement of the grasped object,
-and object state (stationary, held, or dropped). Automatic scoring removes
-inter-rater variability and makes the score available while the trial is
-still running, not after the trainee has left the console.
+The system measures each trial directly from sensor and vision data,
+without a human rater watching the trial. Four measures are tracked as
+the trial runs: completion time, path length of the instrument tip,
+angular displacement of the grasped object, and object state (stationary,
+held, or dropped). This thesis does not collapse these measures into a
+single computed score. Instead, the system logs the full multimodal
+stream and surfaces the subset judged useful as real-time feedback to the
+trainee.
 
-The long-term vision extends past a single scored trial: a closed-loop
-system that adapts task difficulty to the trainee's demonstrated
-performance, without an instructor setting parameters by hand. The
+The long-term vision goes beyond monitoring a single trial. It is a
+closed-loop, adaptive-evolutive task: difficulty changes trial by trial,
+based on the trainee's score on the previous one. Difficulty could
+increase through a farther peg, or a tighter orientation tolerance. The
 adaptive-task design in Section~\ref{sec:conclusion} outlines one path
-toward that vision; this thesis builds the real-time measurement layer
-that any such closed loop would depend on.
+toward that vision. This thesis builds the real-time measurement layer
+that such a closed loop would depend on.
 
 \subsection{Motivation}
 
-\paragraph{Real-time feedback accelerates learning.} Trainees who see their
-performance while still performing the task can correct technique
-immediately, instead of waiting for a debrief after the console session
-ends. Immediate, task-relevant feedback is established in the motor-skill
-learning literature as more effective for skill acquisition than delayed,
-post-session review~\cite{TODO_motor_learning}. A real-time score turns
-every trial into a feedback opportunity, not just a data point for later
+\paragraph{Real-time feedback accelerates learning.} Trainees who see
+their performance while still performing the task can correct technique
+immediately. They do not have to wait for a debrief after the console
+session ends. In a randomized trial on a robotic surgical task, real-time
+feedback lowered trainees' error rate and raised their skill score,
+compared to a no-feedback control~\cite{laca2022}. The largest gains were
+among initially low-performing trainees. Real-time monitoring turns every
+trial into a feedback opportunity, not just a data point for later
 analysis.
 
 \paragraph{Automated capture catches what human observers miss.} An
 expert observer watching a live trial cannot track every event at once --
 a brief arm collision, incidental contact with the environment, a subtle
-wrist over-rotation. These events are easy to miss in real time and hard
-to reconstruct afterward from memory or video alone. Sensor-driven capture
-logs every such event with precision, producing a complete record that
-does not depend on what the observer happened to notice.
+wrist over-rotation. These events are easy to miss in real time, and hard
+to reconstruct afterward from memory or video alone. Sensor-driven
+capture logs every such event with precision. The result is a complete
+record that does not depend on what the observer happened to notice.
 
-\paragraph{Multimodal data can surface metrics that redefine proficiency.}
-Completion time is the traditional proxy for skill, but it collapses a lot
-of information into one number. Combining kinematic, visual, and force data
-opens the door to metrics that time alone cannot express -- motion
-smoothness, instrument path efficiency, grasp stability. These metrics may
-distinguish expert from novice behavior more precisely than time does, and
-could inform how surgical proficiency is measured beyond this task.
+\paragraph{Multimodal data can surface metrics that redefine
+proficiency.} Completion time is the traditional proxy for skill, but it
+collapses a lot of information into one number. Combining kinematic,
+visual, and force data opens the door to metrics that time alone cannot
+express -- motion smoothness, instrument path efficiency, grasp
+stability. These metrics may distinguish expert from novice behavior more
+precisely than time does. They could also inform how surgical proficiency
+is measured beyond this task.
 
 \subsection{Contribution}
 
-Prior work establishes the two ends of this problem separately: offline
-kinematic analysis scores skill accurately but after the fact, and
-real-time feedback systems exist but depend on a human expert to trigger
-them (see Chapter~\ref{sec:background} for the detailed comparison). This
-thesis closes that gap for one task: a multimodal, automated system that
-scores dVRK peg transfer live, on the physical robot, with no human rater
-and no post-hoc processing step in the feedback loop.
+Prior work establishes the two ends of this problem separately. Offline
+kinematic analysis yields accurate skill proxies, but only after the task
+is done. Real-time feedback systems exist, but they depend on a human
+expert to trigger them (see Chapter~\ref{sec:background} for the detailed
+comparison). This thesis closes that gap for one task. It is a
+multimodal, automated system that measures dVRK peg-transfer performance
+live, on the physical robot, and returns feedback during the trial. No
+human rater and no post-hoc processing step sit in between.
