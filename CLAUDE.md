@@ -5,5 +5,8 @@
 - One .tex file per chapter under sections/, included from main.tex via \input
 - Figures live in figures/, referenced as figures/<name>.png — copy finished
   plots here from the dvrk_shujiro code repo; do not link across repos
+- Photos (hardware, setup shots, screenshots) live in pictures/, referenced
+  as pictures/<name>.jpg — same rule: copy the file in, do not link across
+  repos
 - Keep each section file self-contained under its own \section heading
 - Follow the formatting/structure/style rules in docs/thesis_style_guide.md for all thesis writing.
