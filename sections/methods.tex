@@ -23,55 +23,64 @@ trainee.
 \begin{table}[h]
 \centering
 \resizebox{\textwidth}{!}{%
-\begin{tabular}{|p{5.2cm}|p{3.5cm}|p{5.6cm}|p{5.6cm}|}
+\begin{tabular}{|p{5.2cm}|p{3.5cm}|p{5.6cm}|p{5.6cm}|p{2.4cm}|}
 \hline
 \textbf{Data / Measure} & \textbf{Timing} & \textbf{Trigger} &
-\textbf{Feedback} \\
+\textbf{Feedback} & \textbf{Cylinders} \\
 \hline
 Trial time &
 Real-time &
 Continuous, lift-to-placement &
-Progress bar (GUI) \\[4pt]
+Progress bar (GUI) &
+Multiple \\[4pt]
 \hline
 Path length &
 Real-time &
 Continuous while clock runs &
-Numeric running total \\[4pt]
+Numeric running total &
+Multiple \\[4pt]
 \hline
 Object detection (YOLOv8~\cite{yolov8}) &
 Real-time, delayed &
 Continuous, event-triggered at placement &
-Backbone for orientation \& state below \\[4pt]
+Backbone for orientation \& state below &
+Multiple \\[4pt]
 \hline
 Cylinder orientation (HSV) &
 Real-time, delayed &
 Continuous, event-triggered at placement &
-Binary indicator \\[4pt]
+Binary indicator &
+Multiple \\[4pt]
 \hline
 Object state (4 classes) &
 Real-time &
 Continuous &
-Status indicator \\[4pt]
+Status indicator &
+Single \\[4pt]
 \hline
 Contact force &
 Real-time, delayed &
 Continuous, after trial ends &
-2D graph, time (x) vs.\ force in N (y) \\[4pt]
+2D graph, time (x) vs.\ force in N (y) &
+Multiple \\[4pt]
 \hline
 Additional camera &
 Real-time &
 Continuous, pedal-triggered &
-Additional camera view \\[4pt]
+Additional camera view &
+Multiple \\[4pt]
 \hline
 3D localization (SAM2~\cite{sam2}) &
 Post-hoc &
 Offline processing &
-Not shown to trainee; offline plot \\
+Not shown to trainee; offline plot &
+Single \\
 \hline
 \end{tabular}%
 }
-\caption{Data collected by the pipeline, its timing class, trigger, and
-the feedback form it reaches the trainee in}
+\caption{Data collected by the pipeline, its timing class, trigger, the
+feedback form it reaches the trainee in, and whether the technique
+supports single or multiple cylinders on the task pad at once}
 \label{tab:data_timing}
 \end{table}
 
