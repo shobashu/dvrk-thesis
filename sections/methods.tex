@@ -1,1 +1,134 @@
-﻿\section{Methods}
+\section{Methods}
+\label{sec:methods}
+
+\subsection{Pipeline Overview}
+\label{subsec:pipeline_overview}
+
+The measures below come from one integrated pipeline, not independent
+scripts. Lifting the cylinder off its center peg triggers the Arduino
+board signal (Section~\ref{subsec:task}); this starts the GUI trial
+clock and begins path-length accumulation. Placing the cylinder on its
+target peg triggers the matching Arduino signal and stops the clock. At
+that instant, HSV segmentation on the YOLOv8-detected cylinder estimates
+its orientation and checks whether the correct face -- blue or white, as
+indicated by the lit target peg (Section~\ref{subsec:task}) -- ended
+face down. Once the trial ends, the GUI plots the total force applied to
+the task pad during the trial: time on the x-axis, force in newtons on
+the y-axis, read from the ATI sensor.
+
+Table~\ref{tab:data_timing} summarizes every measure the pipeline
+collects: its timing class, what triggers it, and how it reaches the
+trainee.
+
+\begin{table}[h]
+\centering
+\begin{tabular}{p{2.7cm}p{2.1cm}p{3.5cm}p{3.9cm}}
+\hline
+\textbf{Data / Measure} & \textbf{Timing} & \textbf{Trigger} &
+\textbf{Feedback} \\
+\hline
+Trial time &
+Real-time &
+Continuous, lift-to-placement (Arduino) &
+Numeric timer (GUI) \\[4pt]
+Path length &
+Real-time &
+Continuous while clock runs &
+Numeric running total (GUI) \\[4pt]
+Object detection (YOLOv8) &
+Real-time &
+Continuous, every frame &
+% TODO: not shown to trainee directly -- confirm it's backbone-only
+Backbone for orientation / state below, not surfaced directly \\[4pt]
+Cylinder orientation (HSV) &
+Delayed &
+Event-triggered, at placement (Arduino signal) &
+Correct / incorrect indicator \\[4pt]
+Object state (stationary / held / dropped / lost) &
+% TODO: confirm timing class -- real-time per-frame, or evaluated only
+% at specific events?
+Real-time &
+Continuous, per-frame classification &
+% TODO: confirm what the trainee actually sees for this -- status icon?
+% only logged?
+Status indicator \\[4pt]
+Contact force &
+Delayed &
+After trial ends &
+2D graph, time (x) vs.\ force in N (y) \\[4pt]
+3D localization (SAM2) &
+Post-hoc &
+After trial, offline processing &
+Not shown to trainee; offline validation plot \\
+\hline
+\end{tabular}
+\caption{Data collected by the pipeline, its timing class, trigger, and
+the feedback form it reaches the trainee in.}
+\label{tab:data_timing}
+\end{table}
+
+\subsection{Real-Time GUI \& Trial Clock}
+
+The trial clock starts and stops from the Arduino cylinder-lift/placement
+signal (Section~\ref{subsec:pipeline_overview}), not from pedal state.
+Path length accrues on the GUI for the full duration the clock runs.
+% TODO: code to be copied into code/ from external folder once path is
+% provided.
+
+\subsection{Object Detection}
+% TODO: YOLOv8 detector, trained on 4 classes -- cylinders, inactive
+% pegs, blue pegs, white pegs. Feeds the angular-displacement and
+% object-state methods below.
+
+\subsection{Path Length}
+% TODO
+
+\subsection{Angular Displacement}
+\label{subsec:angular_displacement}
+
+Cylinder orientation is estimated by HSV segmentation on the region
+YOLOv8 detects as the cylinder.
+% TODO: describe the HSV method itself -- color thresholds, how the
+% orientation angle is derived from the segmented mask.
+
+This estimate is computed at placement and feeds the
+orientation-correctness check in Object State Detection below.
+
+\subsection{Object State Detection}
+
+At placement, the orientation estimate from
+Section~\ref{subsec:angular_displacement} determines whether the
+cylinder landed correctly: the lit target peg (Section~\ref{subsec:task})
+specifies blue or white face down, and the trial is scored correct or
+incorrect against that target.
+% TODO: classifier over 4 cylinder states -- stationary, held, dropped,
+% lost -- augmented with XGBoost. Cross-check against conductive-paint
+% task board signal (subsec:task) and ground contact detection below.
+
+\subsection{Ground Contact Detection}
+
+Contact force from the ATI sensor is not streamed live during the trial.
+Once the trial ends, the GUI displays it as a 2D graph -- time on the
+x-axis, total force in newtons on the y-axis -- showing how much force
+was applied to the task pad over the course of the trial.
+
+\subsection{3D Localization (Post-Hoc)}
+
+The pipeline includes a 3D localization method for the cylinder, tracking
+its $(x, y, z)$ position from the RealSense D405 depth stream. An early
+version of this method ran in real time, but tracking was unreliable.
+% TODO: state the specific failure mode (noise / occlusion / drift / other)
+To improve accuracy, the method was rebuilt on Segment Anything 2
+(SAM2)~\cite{sam2} for cylinder segmentation. SAM2 produces an accurate
+mask, but its per-frame runtime exceeds the trial's real-time budget.
+
+This method therefore runs post-hoc, after the trial ends, not live
+during it. Its role in this thesis is validation, not live measurement:
+3D localization gives an accurate offline reference for cylinder
+position, used to check the real-time measures -- path length and
+angular displacement -- against ground truth. It is not one of the
+real-time measures the system delivers during a trial
+(Section~\ref{subsec:scope}).
+
+\subsection{Experimental Protocol}
+% TODO: participants, trial structure, number of runs per participant.

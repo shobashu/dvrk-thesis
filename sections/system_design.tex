@@ -1,1 +1,56 @@
 ﻿\section{System Design \& Task Setup}
+\label{sec:system_design}
+
+\subsection{Hardware}
+
+Experiments were run on a da Vinci Research Kit (dVRK)~\cite{dvrk}. The
+dVRK pairs a da Vinci S surgeon-side console with da Vinci Si
+patient-side arms, instrumented with bipolar fenestrated forceps. Two
+patient-side manipulators, PSM1 and PSM2, are available for control;
+trials can use either arm alone or both together.
+
+\subsection{Task}
+\label{subsec:task}
+
+The task is a cylinder-on-peg transfer task. The task board holds four
+blue and four white cylinders at rest on four center pegs. Eight pegs
+ring the outside of the board; each is embedded with an LED that lights
+either blue or white to indicate the target cylinder and its destination
+peg for the next move (Figure~\ref{fig:task_board}).
+
+The board is instrumented with conductive paint, wired to detect cylinder
+placement and removal directly: contact between a cylinder and a peg
+closes a circuit specific to that peg. This gives a ground-truth signal
+for cylinder state -- seated on a peg, or in transit -- independent of
+the vision pipeline.
+
+\begin{figure}[h]
+\centering
+% \includegraphics[width=0.6\textwidth]{figures/task_board.png}
+\caption{Task board layout. Four center pegs hold the cylinders at rest.
+Eight outer pegs illuminate blue or white via embedded LEDs to indicate
+the target cylinder and destination for the next move.}
+\label{fig:task_board}
+\end{figure}
+
+\subsection{Vision}
+\label{subsec:vision}
+
+Two camera streams feed the pipeline. The dVRK endoscopic camera provides
+the stereo view used at the surgeon console. An Intel RealSense D405
+depth camera, mounted next to the task board, provides a fixed external
+RGB-D view of the workspace, independent of console head motion.
+% TODO: auxiliary camera view -- extra pedal toggles a second view
+% (top or side of task pad) during robot control, for added depth
+% perception. Describe pedal mapping and where the view is displayed.
+
+\subsection{Sensing}
+\label{subsec:sensing}
+
+Three further modalities complement the two camera streams. Kinematic
+data -- joint positions, velocities, and tool-tip pose -- is read
+directly from the patient-side manipulators (PSMs). Task start and end
+events are detected by an Arduino-based trigger circuit, independent of
+the vision and kinematic streams. Contact forces are measured by an ATI
+force sensor mounted underneath the task pad, capturing forces
+transmitted through the board as cylinders are placed and removed.
