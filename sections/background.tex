@@ -77,38 +77,30 @@ automates that measurement step too: performance measures are computed
 live, from sensor and vision data, with no human rater at any point in
 the loop.
 
-\subsection{The Gap}
-
-Table~\ref{tab:related_work} lines up the four streams against the
-requirements this thesis targets: automated operation, real-time
-delivery, and deployment on the physical robot. No prior approach
-satisfies all three at once.
-
 \begin{table}[h]
 \centering
-\begin{tabular}{p{3.3cm}p{5.1cm}p{4.3cm}}
+\begin{tabular}{|p{3.3cm}|p{5.1cm}|p{4.3cm}|}
 \hline
 \textbf{Approach} & \textbf{What it does} & \textbf{Limitation} \\
 \hline
 Post-hoc kinematic analysis (JIGSAWS-style) &
-Path length, velocity, jerk computed from recorded kinematics as skill
-proxies &
-Offline; not available during the trial \\[4pt]
+Path length, velocity, jerk as skill proxies &
+Offline; not live \\[4pt]
+\hline
 Post-hoc vision &
-Object detection on recorded video for task-progress tracking &
+Object detection on recorded video for task-progress &
 Computationally heavy; not real-time \\[4pt]
+\hline
 Real-time multimodal skill prediction (Hu et al.~\cite{hu2026}) &
 Fuses kinematic + vision data from the da Vinci system to predict OSATS
 skill score in real time &
 Evaluated offline on recorded trials; predicts general skill, not
 task-specific metrics \\[4pt]
+\hline
 Real-time feedback (Laca et al.~\cite{laca2022}) &
 RCT: real-time feedback during a robotic dissection task, on physical
 hardware &
 Performance is still scored post-hoc, by blinded human video review \\[4pt]
-\textbf{This work} &
-Multimodal, automated, on the physical robot, live &
---- (the gap this thesis fills) \\
 \hline
 \end{tabular}
 \caption{Related work on surgical task assessment, compared against the
@@ -116,6 +108,8 @@ requirements this thesis targets. No prior approach is simultaneously
 automated, real-time, and deployed on physical hardware.}
 \label{tab:related_work}
 \end{table}
+
+
 
 This thesis closes those gaps together. It combines kinematic, visual,
 and force data into one pipeline, computes task-specific performance

@@ -37,32 +37,23 @@
 \begin{document}
 \maketitle
 
-\begin{center}
-\fbox{\parbox{0.9\textwidth}{\centering
-\textbf{Status:} Outline for review -- structure and scope, not final
-content. Items marked \textbf{[TODO]} or \textbf{PLACEHOLDER} are open;
-everything else reflects what is already drafted in the thesis.}}
-\end{center}
-
 \section*{Abstract}
 % Complete structurally; numeric results are placeholders pending data.
 Real-time performance feedback can accelerate skill acquisition during
 robotic surgical training, but existing systems either compute
-performance measures only after a trial ends, or depend on a human
+performance measures only after a task ends (post-hoc), or depend on a human
 rater to trigger and score feedback during the trial. We present a
 multimodal system that measures peg-transfer task performance live, on
-a physical da Vinci Research Kit (dVRK), with no human rater at any
+a physical da Vinci Research Kit, with no human rater at any
 point in the loop. The system fuses kinematic, visual, and force data
 through an event-triggered pipeline: trial time and instrument path
 length are tracked in real time, cylinder orientation is checked at
-placement via HSV segmentation on a YOLOv8-detected cylinder, and
-contact force is reported immediately after each trial. A
-higher-accuracy, SAM2-based 3D localization method runs post-hoc as an
-offline validation reference for the real-time measures, not as a
-delivered real-time measure itself. Across [$N$ participants, $N$
-trials -- PLACEHOLDER], the real-time measures agree with the post-hoc
-reference to within [PLACEHOLDER], with per-trial feedback latency of
-[PLACEHOLDER]. These results show that automated, real-time, on-robot
+placement via HSV segmentation on a YOLOv8-detected
+cylinder, and contact force is reported immediately after each trial.
+In addition, with the depth camera, we collect a higher-accuracy,
+SAM2-based 3D localization measure post-hoc, as extra
+validation data for the
+real-time measures rather than a delivered real-time measure itself. These results show that automated, real-time, on-robot
 performance measurement is feasible for a structured surgical training
 task, and lay the groundwork for a closed-loop, difficulty-adaptive
 training system.
@@ -105,22 +96,64 @@ training system.
   (Laca et al.~\cite{laca2022}): real-time feedback RCT on physical
   hardware, but the performance measure behind the feedback is scored
   post-hoc by blinded human raters.
-  \item \textbf{2.5 The Gap} -- No prior approach is simultaneously
-  automated, real-time, and on physical hardware. \emph{[Table 1 --
-  see Expected Figures/Tables below]}
 \end{itemize}
+
+
+\begin{table}[h]
+\centering
+\begin{tabular}{|p{3.3cm}|p{5.1cm}|p{4.3cm}|}
+\hline
+\textbf{Approach} & \textbf{What it does} & \textbf{Limitation} \\
+\hline
+Post-hoc kinematic analysis (JIGSAWS-style) &
+Path length, velocity, jerk as skill proxies &
+Offline; not live \\[4pt]
+\hline
+Post-hoc vision &
+Object detection on recorded video for task-progress &
+Computationally heavy; not real-time \\[4pt]
+\hline
+Real-time multimodal skill prediction (Hu et al.~\cite{hu2026}) &
+Fuses kinematic + vision data from the da Vinci system to predict OSATS
+skill score in real time &
+Evaluated offline on recorded trials; predicts general skill, not
+task-specific metrics \\[4pt]
+\hline
+Real-time feedback (Laca et al.~\cite{laca2022}) &
+RCT: real-time feedback during a robotic dissection task, on physical
+hardware &
+Performance is still scored post-hoc, by blinded human video review \\[4pt]
+\hline
+\end{tabular}
+\caption{Related work on surgical task assessment, compared against the
+requirements this thesis targets -- matches \texttt{tab:related\_work}
+in \texttt{sections/background.tex}.}
+\label{tab:outline_related_work}
+\end{table}
+
 
 \subsection*{3. System \& Task Setup}
 \begin{itemize}
   \item \textbf{3.1 Hardware} -- dVRK: da Vinci S console, da Vinci Si
-  patient-side arms, bipolar fenestrated forceps, PSM1/PSM2.
-  \item \textbf{3.2 Task} -- Cylinder-on-peg transfer: 4 center pegs
+  patient-side arms, PSM1/PSM2, with bipolar fenestrated forceps.
+  \item \textbf{3.2 Formative Study} -- Prior data collection (27
+  novices, 9 experts -- robotic surgeons with $>$250 hours of
+  laparoscopic teleoperated experience) for Mary Kate's study on fine
+  wrist control as a marker of teleoperation expertise; the author
+  assisted in data collection. Findings informed the task board design
+  below: experts frustration with unimanual
+  control (PSM1 only), no being allowed toclutch, no camera repositioning; 
+  and, with novice operators, non-smooth motion that damaged pegs on the original
+  board. High success rates and peg breakage during this study motivated
+  the shorter-peg board used here, which raises task difficulty while
+  preventing breakage. 
+  \item \textbf{3.3 Task} -- Cylinder-on-peg transfer: 4 center pegs
   (rest position), 8 outer pegs with blue/white LEDs (target
   indication), conductive-paint board for ground-truth contact
   detection. \emph{[Figure 1 -- task board]}
-  \item \textbf{3.3 Vision} -- dVRK endoscopic stereo camera; Intel
-  RealSense D405 depth camera, fixed external view.
-  \item \textbf{3.4 Sensing} -- PSM kinematics; Arduino-based
+  \item \textbf{3.4 Vision} -- dVRK endoscopic stereo camera; Intel
+  RealSense D405 depth camera, fixed external view; External camera for additional view, pedal-triggered.
+  \item \textbf{3.5 Sensing} -- PSM kinematics; Arduino-based
   task start/end trigger; ATI force sensor under the task pad.
 \end{itemize}
 
@@ -135,9 +168,9 @@ training system.
   \item \textbf{4.2 Real-Time GUI \& Trial Clock} -- Arduino-triggered
   start/stop; path length accrues while clock runs. \emph{[Figure 3 --
   GUI screenshot]} [TODO: source code reference/appendix]
-  \item \textbf{4.3 Object Detection} -- YOLOv8, 4 classes (cylinder,
-  inactive/blue/white peg); backbone for 4.5--4.6. [TODO: training
-  data, accuracy]
+  \item \textbf{4.3 Object Detection} -- YOLOv8~\cite{yolov8}, 4 classes
+  (cylinder, inactive/blue/white peg); backbone for 4.5--4.6. [TODO:
+  training data, accuracy]
   \item \textbf{4.4 Path Length} -- [TODO: computation method --
   kinematic tool-tip pose vs. vision-tracked cylinder]
   \item \textbf{4.5 Angular Displacement} -- HSV segmentation on
@@ -146,38 +179,83 @@ training system.
   \item \textbf{4.6 Object State Detection} -- Correct/incorrect
   placement scoring from 4.5 against the lit target peg; separately,
   a 4-class state classifier (stationary/held/dropped/lost) augmented
-  with XGBoost. [TODO: classifier details, training data]
+  with XGBoost~\cite{xgboost}. [TODO: classifier details, training data]
   \item \textbf{4.7 Ground Contact Detection} -- ATI force sensor;
   displayed as a post-trial 2D graph (time vs.\ force in N), not
   streamed live. \emph{[Figure 4 -- force graph]}
-  \item \textbf{4.8 3D Localization (Post-Hoc)} -- SAM2-based cylinder
-  segmentation from the D405 depth stream, $(x,y,z)$ over the trial.
+  \item \textbf{4.8 3D Localization (Post-Hoc)} -- SAM2-based~\cite{sam2}
+  cylinder segmentation from the D405 depth stream, $(x,y,z)$ over the
+  trial.
   Not real-time (SAM2 runtime exceeds the trial budget); serves as an
   offline validation reference for 4.4/4.5, not a delivered real-time
   measure. Early real-time attempt was unreliable [TODO: failure mode].
-  \item \textbf{4.9 Experimental Protocol} -- [TODO: participants,
-  trial structure, number of runs per participant]
 \end{itemize}
+
+
+\begin{table}[h]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{|p{5.2cm}|p{3.2cm}|p{5.6cm}|p{5.6cm}|}
+\hline
+\textbf{Data / Measure} & \textbf{Timing} & \textbf{Trigger} &
+\textbf{Feedback} \\
+\hline
+Trial time &
+Real-time &
+Continuous, lift-to-placement &
+Progress bar (GUI) \\[4pt]
+\hline
+Path length &
+Real-time &
+Continuous while clock runs &
+Numeric running total \\[4pt]
+\hline
+Object detection (YOLOv8~\cite{yolov8}) &
+Real-time, delayed &
+Continuous, event-triggered at placement &
+Backbone for orientation \& state below \\[4pt]
+\hline
+Cylinder orientation (HSV) &
+Real-time, delayed &
+Continuous, event-triggered at placement &
+Binary indicator \\[4pt]
+\hline
+Object state (4 classes) &
+Real-time &
+Continuous &
+Status indicator \\[4pt]
+\hline
+Contact force &
+Real-time, delayed &
+Continuous, after trial ends &
+2D graph, time (x) vs.\ force in N (y) \\[4pt]
+\hline
+Additional camera &
+Real-time &
+Continuous, pedal-triggered &
+Additional camera view \\[4pt]
+\hline
+3D localization (SAM2~\cite{sam2}) &
+Post-hoc &
+Offline processing &
+Not shown to trainee; offline plot \\
+\hline
+\end{tabular}%
+}
+\caption{Data collected by the pipeline, its timing class, trigger, and
+the feedback form it reaches the trainee in -- matches
+\texttt{tab:data\_timing} in \texttt{sections/methods.tex}.}
+\label{tab:outline_data_timing}
+\end{table}
+
+\newpage
 
 \subsection*{5. Results \& Evaluation -- PLACEHOLDER}
 % Not yet written in the thesis; proposed structure for review.
-\begin{itemize}
-  \item \textbf{5.1 Participants \& Trials} -- [TODO: $N$, demographics
-  if any, trial counts]
-  \item \textbf{5.2 Real-Time Measure Accuracy} -- Real-time path
-  length / angular displacement / object state validated against the
-  post-hoc SAM2 reference (4.8). \emph{[Figure 5 -- accuracy/agreement
-  plot]}
-  \item \textbf{5.3 Timing \& Latency} -- End-to-end feedback latency
-  per measure. \emph{[Figure 6 -- latency plot]}
-  \item \textbf{5.4 [Open]} -- [TODO: skill-level comparison? novice
-  vs.\ expert? decide with group]
-\end{itemize}
+
 
 \subsection*{6. Discussion -- PLACEHOLDER}
-[TODO: interpretation of results; limitations, incl. the real-time vs.
-post-hoc 3D localization tradeoff (4.8); what the negative result on
-the early real-time attempt implies]
+
 
 \subsection*{7. Conclusion \& Future Work}
 \begin{itemize}
@@ -186,78 +264,6 @@ the early real-time attempt implies]
   \item Outlook: closed-loop, difficulty-adaptive task (farther peg,
   tighter orientation tolerance, difficulty set by prior trial score).
 \end{itemize}
-
-\section*{Expected Figures and Tables}
-% Placeholders and sketches per Allison's format. Real assets noted
-% where they already exist in figures/ or pictures/.
-
-\begin{figure}[h]
-\centering
-\fbox{\parbox[c][3cm]{0.6\textwidth}{\centering PLACEHOLDER\\
-photo/diagram of task board -- exists as a commented placeholder in
-\texttt{sections/system\_design.tex}, image not yet captured}}
-\caption{Task board layout: four center pegs hold the cylinders at
-rest; eight outer pegs illuminate blue or white via embedded LEDs to
-indicate the target cylinder and destination for the next move.}
-\label{fig:outline_task_board}
-\end{figure}
-
-\begin{figure}[h]
-\centering
-\fbox{\parbox[c][3cm]{0.6\textwidth}{\centering PLACEHOLDER -- SKETCH\\
-block diagram: PSM kinematics / endoscope / D405 / Arduino / ATI force
-sensor $\to$ pipeline $\to$ GUI}}
-\caption{System and data pipeline architecture: sensing and vision
-inputs, the Arduino-triggered event pipeline, and the real-time GUI
-outputs (Section~4.1).}
-\label{fig:outline_pipeline}
-\end{figure}
-
-\begin{figure}[h]
-\centering
-\fbox{\parbox[c][3cm]{0.6\textwidth}{\centering PLACEHOLDER\\
-screenshot of the real-time GUI (trial clock, path length, orientation
-indicator)}}
-\caption{Real-time GUI during a trial, showing the trial clock, running
-path length, and the placement orientation indicator.}
-\label{fig:outline_gui}
-\end{figure}
-
-\begin{figure}[h]
-\centering
-\fbox{\parbox[c][3cm]{0.6\textwidth}{\centering PLACEHOLDER\\
-example post-trial force graph (time vs.\ newtons)}}
-\caption{Contact force applied to the task pad over the course of one
-trial, as displayed to the trainee after the trial ends.}
-\label{fig:outline_force}
-\end{figure}
-
-\begin{figure}[h]
-\centering
-\fbox{\parbox[c][3cm]{0.6\textwidth}{\centering PLACEHOLDER -- pending
-data\\ real-time measures vs.\ post-hoc SAM2 reference}}
-\caption{Agreement between real-time path length / angular displacement
-and the post-hoc SAM2-based 3D localization reference.}
-\label{fig:outline_accuracy}
-\end{figure}
-
-\begin{figure}[h]
-\centering
-\fbox{\parbox[c][3cm]{0.6\textwidth}{\centering PLACEHOLDER -- pending
-data\\ per-measure feedback latency}}
-\caption{End-to-end feedback latency for each real-time measure.}
-\label{fig:outline_latency}
-\end{figure}
-
-\noindent\textbf{Table 1} -- Related work comparison (automated /
-real-time / on physical hardware), already drafted as
-\texttt{tab:related\_work} in \texttt{sections/background.tex}; to be
-reused here.
-
-\noindent\textbf{Table 2} -- Data collected, timing class (real-time /
-delayed / post-hoc), trigger, and feedback form, already drafted as
-\texttt{tab:data\_timing} in \texttt{sections/methods.tex}; to be
-reused here.
 
 \bibliographystyle{plain}
 \bibliography{../references}
