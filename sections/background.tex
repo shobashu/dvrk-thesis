@@ -1,95 +1,67 @@
 \section{Background \& Related Work}
 \label{sec:background}
+\subsection{Post-Hoc Analysis}
 
-Related work on surgical task assessment splits into four streams. Each
-stream solves part of the problem this thesis addresses. None solves all
-of it live, on the physical robot, without a human rater.
+The most common approach derives skill proxies from recordings taken
+during the trial. The JIGSAWS dataset~\cite{jigsaws} is the standard
+benchmark: kinematic and video recordings of surgeons performing
+bench-top tasks, paired with expert skill ratings. Studies that use the
+kinematic side of this data compute features such as path length,
+velocity, and jerk from the recorded trajectories, then correlate them
+with the expert ratings to separate novice from expert performance.
+Studies that use the video side instead apply object detection to track
+task progress directly from what the camera sees, catching information
+kinematics alone cannot, such as object identity, object state, and
+spatial relationships between objects and the task environment; the
+computational cost is significant, since detection and segmentation pipelines 
+that are accurate enough to track a task's progress are typically too heavy to 
+run at camera frame rate.
 
-\subsection{Post-Hoc Kinematic Analysis}
-
-The dominant paradigm derives skill proxies from recorded robot
-kinematics. The JIGSAWS dataset~\cite{jigsaws} is the standard benchmark:
-kinematic and video recordings of surgeons performing bench-top tasks,
-paired with expert skill ratings. Studies built on this paradigm compute
-features such as path length, velocity, and jerk from the recorded
-trajectories, then correlate them with the expert ratings to separate
-novice from expert performance.
-
-These proxies are informative, but they are computed after the trial
-ends. The pipeline reads a complete trajectory, not a live stream. None
+Either way, these proxies are computed after the trial ends. The
+pipeline reads a complete trajectory or video, not a live stream. None
 of this feedback reaches the trainee while the trial is still running.
-
-\subsection{Post-Hoc Vision}
-
-A second stream applies object detection to recorded video, to track task
-progress directly from what the camera sees rather than from
-robot-reported kinematics. This catches information kinematics alone
-cannot -- object identity, object state, and spatial relationships
-between objects and the task environment.
-
-The cost is compute. Detection and segmentation pipelines accurate enough
-for task-progress tracking are typically too heavy to run at camera frame
-rate. Reported systems in this stream run offline or with latency too
-high for live feedback.
 
 \subsection{Real-Time Multimodal Skill Prediction}
 
-The closest technical precedent to this thesis is Hu et
-al.~\cite{hu2026}, who fuse kinematic and vision data from the da Vinci
-Surgical System to predict surgical skill level in real time. Their
-target is Objective Structured Assessment of Technical Skills (OSATS)
-score on a suturing task, not task-specific metrics.
+The closest related work is Hu et al.~\cite{hu2026}, who combine
+kinematic and vision data from the da Vinci system to predict surgical
+skill in real time. They predict one general OSATS skill score for a
+suturing task, not task-specific metrics.
 
-They report three analyses. First, on model design: fusion models that
-combine kinematic and vision features consistently outperform either
-modality alone, measured by mean Spearman correlation. Second, on
-real-time behavior: predictions tracked over time correlate with the
-surgeon's gestures. Third, on skill-stratified training: models trained
-on expert-level demonstrations generalize better than models trained on
-novice-level ones, and generalize best to participants of similar skill.
-
-This work confirms the technical premise this thesis builds on --
-fusing kinematic and vision data gives a more stable signal than either
-modality alone. Two gaps remain. The predicted target is a general OSATS
-skill score, the kind of global judgment this thesis deliberately avoids
-(Section~\ref{subsec:scope}). And "real time" here means the model can
-predict causally from data up to the current time step; the evaluation
-itself runs on recorded trials, not a system deployed live during an
-ongoing one. This thesis deploys the equivalent pipeline live, on the
-physical robot, during the trial itself.
+Their results show that combining kinematic and vision data works
+better than using either alone, that predictions track the surgeon's
+movements over time, and that models trained on expert demonstrations
+generalize better than models trained on novice ones. But two
+gaps remain. First, they predict one general skill score, not the
+task-specific measures this thesis targets (Section~\ref{subsec:scope}).
+Second, their model can predict from live data in principle, but they
+only test it on recorded trials, not on a robot running in real time.
 
 \subsection{Real-Time Feedback Attempts}
 
-The strongest evidence for this stream comes from Laca et
-al.~\cite{laca2022}, who ran a randomized controlled trial of real-time
-feedback on a robotic tissue dissection task, on a physical da Vinci Xi.
-Trainees who received feedback in the second of two rounds lowered their
-error rate and raised their skill score significantly more than a
-no-feedback control group, with the largest gains among initially
-low-performing trainees.
+Laca et al.~\cite{laca2022} ran a randomized trial of real-time feedback
+on a robotic tissue dissection task, on a physical da Vinci Xi.
+Trainees who got feedback in the second of two rounds lowered their
+error rate and raised their skill score more than a no-feedback group,
+with the biggest gains among low-performing trainees. But the performance 
+measure behind the feedback comes from four human raters
+reviewing recorded video after the trial. So the feedback is real-time,
+but the measurement behind it is not. \\ 
 
-This result is closest in spirit to this thesis: it is real-time, and it
-runs on physical hardware, not simulation. But the trial's own
-performance measure -- error tally and skill score -- comes from
-retrospective review of recorded video by four blinded human raters. The
-feedback loop is real-time; the measurement behind it is not. This thesis
-automates that measurement step too: performance measures are computed
-live, from sensor and vision data, with no human rater at any point in
-the loop.
+
+Table~\ref{tab:related_work} lines up these three streams against what
+this thesis targets: automated, real-time, and on physical robot.
 
 \begin{table}[h]
 \centering
-\begin{tabular}{|p{3.3cm}|p{5.1cm}|p{4.3cm}|}
+\begin{tabular}{|p{3.2cm}|p{5.1cm}|p{4.3cm}|}
 \hline
 \textbf{Approach} & \textbf{What it does} & \textbf{Limitation} \\
 \hline
-Post-hoc kinematic analysis (JIGSAWS-style) &
-Path length, velocity, jerk as skill proxies &
-Offline; not live \\[4pt]
-\hline
-Post-hoc vision &
-Object detection on recorded video for task-progress &
-Computationally heavy; not real-time \\[4pt]
+Post-hoc analysis (JIGSAWS-style: kinematics + video) &
+Path length, velocity, jerk from kinematics; object detection from
+video for task-progress &
+Offline; not live; vision side also computationally heavy \\[4pt]
 \hline
 Real-time multimodal skill prediction (Hu et al.~\cite{hu2026}) &
 Fuses kinematic + vision data from the da Vinci system to predict OSATS
@@ -98,7 +70,7 @@ Evaluated offline on recorded trials; predicts general skill, not
 task-specific metrics \\[4pt]
 \hline
 Real-time feedback (Laca et al.~\cite{laca2022}) &
-RCT: real-time feedback during a robotic dissection task, on physical
+Real-time feedback during a robotic dissection task, on physical
 hardware &
 Performance is still scored post-hoc, by blinded human video review \\[4pt]
 \hline
@@ -111,7 +83,3 @@ automated, real-time, and deployed on physical hardware.}
 
 
 
-This thesis closes those gaps together. It combines kinematic, visual,
-and force data into one pipeline, computes task-specific performance
-measures -- not a general skill score -- without a human rater, and runs
-the full pipeline live, during the trial, on the physical dVRK.

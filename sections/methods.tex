@@ -10,8 +10,8 @@ board signal (Section~\ref{subsec:task}); this starts the GUI trial
 clock and begins path-length accumulation. Placing the cylinder on its
 target peg triggers the matching Arduino signal and stops the clock. At
 that instant, HSV segmentation on the YOLOv8-detected~\cite{yolov8} cylinder estimates
-its orientation and checks whether the correct face -- blue or white, as
-indicated by the lit target peg (Section~\ref{subsec:task}) -- ended
+its orientation and checks whether the correct face, blue or white, as
+indicated by the lit target peg (Section~\ref{subsec:task}), ended
 face down. Once the trial ends, the GUI plots the total force applied to
 the task pad during the trial: time on the x-axis, force in newtons on
 the y-axis, read from the ATI sensor.
@@ -38,6 +38,12 @@ Path length &
 Real-time &
 Continuous while clock runs &
 Numeric running total &
+Multiple \\[4pt]
+\hline
+Rate of orientation change &
+Real-time &
+Continuous while clock runs &
+Numeric running value &
 Multiple \\[4pt]
 \hline
 Object detection (YOLOv8~\cite{yolov8}) &
@@ -93,19 +99,30 @@ Path length accrues on the GUI for the full duration the clock runs.
 % provided.
 
 \subsection{Object Detection}
-% TODO: YOLOv8 detector, trained on 4 classes -- cylinders, inactive
+% TODO: YOLOv8 detector, trained on 4 classes: cylinders, inactive
 % pegs, blue pegs, white pegs. Feeds the angular-displacement and
 % object-state methods below.
 
 \subsection{Path Length}
 % TODO
 
+\subsection{Rate of Orientation Change}
+\label{subsec:orientation_rate}
+
+The rate of orientation change is computed directly from PSM
+kinematics, the angular velocity of the instrument tip while the trial
+clock runs. This measure follows Sharon et al.~\cite{sharon2021}, who
+found it separated expert from novice performance on needle-driving
+and suturing tasks, alongside classical measures such as task time and
+path length.
+% TODO: exact computation method, kinematic signal used, sampling rate.
+
 \subsection{Angular Displacement}
 \label{subsec:angular_displacement}
 
 Cylinder orientation is estimated by HSV segmentation on the region
 YOLOv8 detects as the cylinder.
-% TODO: describe the HSV method itself -- color thresholds, how the
+% TODO: describe the HSV method itself: color thresholds, how the
 % orientation angle is derived from the segmented mask.
 
 This estimate is computed at placement and feeds the
@@ -118,15 +135,19 @@ Section~\ref{subsec:angular_displacement} determines whether the
 cylinder landed correctly: the lit target peg (Section~\ref{subsec:task})
 specifies blue or white face down, and the trial is scored correct or
 incorrect against that target.
-% TODO: classifier over 4 cylinder states -- stationary, held, dropped,
-% lost -- augmented with XGBoost. Cross-check against conductive-paint
-% task board signal (subsec:task) and ground contact detection below.
+
+Separately, a classifier tracks the cylinder across four states:
+stationary (at rest on a peg), held (grasped by the instrument),
+dropped (off the board), and lost (out of the ECM's view).
+% TODO: classifier details, training data, XGBoost augmentation.
+% Cross-check against conductive-paint task board signal (subsec:task)
+% and ground contact detection below.
 
 \subsection{Ground Contact Detection}
 
 Contact force from the ATI sensor is not streamed live during the trial.
-Once the trial ends, the GUI displays it as a 2D graph -- time on the
-x-axis, total force in newtons on the y-axis -- showing how much force
+Once the trial ends, the GUI displays it as a 2D graph, time on the
+x-axis and total force in newtons on the y-axis, showing how much force
 was applied to the task pad over the course of the trial.
 
 \subsection{3D Localization (Post-Hoc)}
@@ -142,7 +163,7 @@ mask, but its per-frame runtime exceeds the trial's real-time budget.
 This method therefore runs post-hoc, after the trial ends, not live
 during it. Its role in this thesis is validation, not live measurement:
 3D localization gives an accurate offline reference for cylinder
-position, used to check the real-time measures -- path length and
-angular displacement -- against ground truth. It is not one of the
+position, used to check the real-time measures, path length and angular
+displacement, against ground truth. It is not one of the
 real-time measures the system delivers during a trial
 (Section~\ref{subsec:scope}).

@@ -1,4 +1,4 @@
-\documentclass[12pt]{report}
+\documentclass[12pt]{article}
 \usepackage[utf8]{inputenc}
 \usepackage{graphicx}
 \usepackage{amsmath}
@@ -28,6 +28,31 @@
 \begin{document}
 
 \maketitle
+
+\newpage
+
+\begin{abstract}
+Real-time performance feedback can accelerate skill acquisition during
+robotic surgical training, but existing systems either compute
+performance measures only after a task ends (post-hoc), or depend on a
+human rater to trigger and score feedback during the trial. We present
+a multimodal system that measures peg-transfer task performance live,
+on a physical da Vinci Research Kit, with no human rater at any point
+in the loop. The system fuses kinematic, visual, and force data through
+an event-triggered pipeline: trial time and instrument path length are
+tracked in real time, cylinder orientation is checked at placement via
+HSV segmentation on a YOLOv8-detected cylinder, and contact force is
+reported immediately after each trial. In addition, with the depth
+camera, we collect a higher-accuracy, SAM2-based 3D localization
+measure post-hoc, as extra validation data for the real-time measures.
+We demonstrate the system on the physical robot, validating the
+real-time measures against this higher-accuracy post-hoc reference, and
+show that automated, real-time, on-robot performance measurement is
+feasible for a structured surgical training task; laying the
+groundwork for a closed-loop, difficulty-adaptive training system.
+\end{abstract}
+
+\newpage
 \tableofcontents
 
 \input{sections/introduction}

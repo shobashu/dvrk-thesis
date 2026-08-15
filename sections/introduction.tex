@@ -3,13 +3,15 @@
 \subsection{Scope}
 \label{subsec:scope}
 
-This thesis makes one deliberate scope decision: it measures performance
+This thesis makes one deliberate scope decision: it evaluates the task,
+not the skill, and analyzes it quantitatively. Performance is measured
 on a single, well-defined task, not global surgical skill. Task-level
-metrics -- completion time, path length, angular displacement, object
-state -- are objective and computable in real time. A global skill
-judgment is neither. Surgical skill is broader, harder to define, and
-harder to measure objectively. This choice shapes every design decision
-that follows -- it is not a limitation discovered later.
+metrics such as completion time, path length, angular displacement, object
+state; are objective and computable in real time. Surgical skill is
+broader, harder to define, and harder to measure objectively. This
+choice shapes every design decision that follows. It was made
+deliberately, from the start of the project, not as a limitation
+discovered later.
 
 \subsection{Goal}
 
@@ -19,12 +21,14 @@ target task is peg transfer: the trainee moves a cylinder between pegs on
 a task pad under stereo endoscopic vision.
 
 The system measures each trial directly from sensor and vision data,
-without a human rater watching the trial. Four measures are tracked as
+without a human rater watching the trial. Five measures are tracked as
 the trial runs: completion time, path length of the instrument tip,
-angular displacement of the grasped object, and object state (stationary,
-held, or dropped). This thesis does not collapse these measures into a
-single computed score. Instead, the system logs the full multimodal
-stream and surfaces the subset judged useful as real-time feedback to the
+rate of orientation change of the instrument, angular displacement of
+the grasped object, and object state (stationary, held, dropped, or
+lost, when the cylinder leaves the ECM's view).
+This thesis does not collapse these measures into a single computed
+score. Instead, the system logs the full multimodal stream and
+surfaces the subset judged useful as real-time feedback to the
 trainee.
 
 The long-term vision goes beyond monitoring a single trial. It is a
@@ -37,20 +41,20 @@ that such a closed loop would depend on.
 
 \subsection{Motivation}
 
-\paragraph{Real-time feedback accelerates learning.} Trainees who see
-their performance while still performing the task can correct technique
-immediately. They do not have to wait for a debrief after the console
+\paragraph{Real-time feedback accelerates learning.} Trainees who can see
+their performance in real-time can correct their
+technique immediately. They do not have to wait for a debrief after the console
 session ends. In a randomized trial on a robotic surgical task, real-time
 feedback lowered trainees' error rate and raised their skill score,
-compared to a no-feedback control~\cite{laca2022}. The largest gains were
-among initially low-performing trainees. Real-time monitoring turns every
+compared to a no-feedback control~\cite{laca2022}. The most significant progress was
+observed among trainees who initially performed poorly. Real-time monitoring turns every
 trial into a feedback opportunity, not just a data point for later
 analysis.
 
 \paragraph{Automated capture catches what human observers miss.} An
-expert observer watching a live trial cannot track every event at once --
-a brief arm collision, incidental contact with the environment, a subtle
-wrist over-rotation. These events are easy to miss in real time, and hard
+expert observer watching a live trial cannot track every event at once,
+such as a brief arm collision, incidental contact with the environment,
+or a subtle wrist over-rotation. These events are easy to miss in real time, and hard
 to reconstruct afterward from memory or video alone. Sensor-driven
 capture logs every such event with precision. The result is a complete
 record that does not depend on what the observer happened to notice.
@@ -59,18 +63,18 @@ record that does not depend on what the observer happened to notice.
 proficiency.} Completion time is the traditional proxy for skill, but it
 collapses a lot of information into one number. Combining kinematic,
 visual, and force data opens the door to metrics that time alone cannot
-express -- motion smoothness, instrument path efficiency, grasp
+express, such as motion smoothness, instrument path efficiency, or grasp
 stability. These metrics may distinguish expert from novice behavior more
 precisely than time does. They could also inform how surgical proficiency
 is measured beyond this task.
 
-\subsection{Contribution}
+%\subsection{Contribution}
 
-Prior work establishes the two ends of this problem separately. Offline
-kinematic analysis yields accurate skill proxies, but only after the task
-is done. Real-time feedback systems exist, but they depend on a human
-expert to trigger them (see Chapter~\ref{sec:background} for the detailed
-comparison). This thesis closes that gap for one task. It is a
-multimodal, automated system that measures dVRK peg-transfer performance
-live, on the physical robot, and returns feedback during the trial. No
-human rater and no post-hoc processing step sit in between.
+%Prior work establishes the two ends of this problem separately. Offline
+%kinematic analysis yields accurate skill proxies, but only after the task
+%is done. Real-time feedback systems exist, but they depend on a human
+%expert to trigger them (see Section~\ref{sec:background} for the detailed
+%comparison). This thesis closes that gap for one task. It is a
+%multimodal, automated system that measures dVRK peg-transfer performance
+%live, on the physical robot, and returns feedback during the trial. No
+%human rater and no post-hoc processing step sit in between.

@@ -4,79 +4,117 @@
 \subsection{Hardware}
 
 Experiments were run on a da Vinci Research Kit (dVRK)~\cite{dvrk}. The
-dVRK pairs a da Vinci S surgeon-side console with da Vinci Si
-patient-side arms, instrumented with bipolar fenestrated forceps. Two
-patient-side manipulators, PSM1 and PSM2, are available for control;
-trials can use either arm alone or both together.
+dVRK has a da Vinci S surgeon console connected to da Vinci Si
+patient-side arms, fitted with bipolar fenestrated forceps. Two
+patient-side arms, PSM1 and PSM2, can be controlled; trials can use
+either arm alone or both together.
 
 \subsection{Formative Study}
 \label{subsec:formative_study}
 
-Prior to this work, the author assisted in data collection for a
-separate, ongoing study led by a mentor, investigating fine wrist
-control as a marker of surgical teleoperation expertise. That study
-collected data from 27 novice and 9 expert participants -- the experts
-robotic surgeons with more than 250 hours of laparoscopic teleoperated
-experience -- on an earlier version of the task board used here.
+Before this work, the author helped collect data for a separate,
+ongoing study led by Mary Kate Gale (one of the mentors of this
+thesis), on "fine wrist control as a marker of surgical teleoperation
+expertise." That study collected data from 27 novices (no surgical or
+medical experience) and 9 experts (robotic surgeons with more than 250
+hours of laparoscopic teleoperated experience), using an earlier
+version of the task board used here.
 
-That data collection surfaced several findings that shaped the system
-and task board described in this chapter. Participant-preferred camera
-views informed the vision setup (Section~\ref{subsec:vision}).
-Participants also reported frustration with unimanual control --
-operating only PSM1, with no clutch and no ability to reposition the
-camera -- over the course of the study. Separately, novice participants'
-motion was often not smooth, and on the original task board this
-repeatedly damaged pegs.
+That data collection led to several findings that shaped this thesis.
+The camera views participants preferred informed the vision setup
+(Section~\ref{subsec:vision}). Participants also said they were
+frustrated using only one arm, PSM1, with no clutch and no way to move
+the camera. Separately, novice participants moved less smoothly, which
+repeatedly broke pegs on the board.
 
-Because success rates on the original board were high and peg breakage
-was a recurring problem, we designed a new task board with lower-height
-pegs for the present work: the shorter pegs raise task difficulty while
-also reducing the risk of peg breakage during trials.
-% TODO: confirm mentor name/attribution and citation status for the
-% formative study before submission.
+High success rates, together with this peg breakage, led to a new task
+board with shorter pegs, meant to make the task harder while breaking
+fewer pegs. That new board has been built but is not used in this
+thesis: the experiments in Section~\ref{subsec:task} use the original
+board. Instead, the new board and these findings support the
+closed-loop, difficulty-adaptive task proposed as future work
+(Section~\ref{sec:conclusion}).
 
 \subsection{Task}
 \label{subsec:task}
 
-The task is a cylinder-on-peg transfer task. The task board holds four
-blue and four white cylinders at rest on four center pegs. Eight pegs
-ring the outside of the board; each is embedded with an LED that lights
-either blue or white to indicate the target cylinder and its destination
-peg for the next move (Figure~\ref{fig:task_board}).
+The task is to move cylinders between pegs. Each cylinder is two-toned,
+blue on the bottom face and white on the top, so the same cylinder can
+be placed blue-side-down or white-side-down depending on the trial.
+Depending on the trial, one or all four cylinders are in play at once.
+At rest, cylinders sit on four center yellow pegs, 3D-printed in PLA.
 
-The board is instrumented with conductive paint, wired to detect cylinder
-placement and removal directly: contact between a cylinder and a peg
-closes a circuit specific to that peg. This gives a ground-truth signal
-for cylinder state -- seated on a peg, or in transit -- independent of
-the vision pipeline.
+Eight more pegs sit around the outside of the board, 3D-printed in
+clear resin (V4) so each can be lit from inside. Each outer peg has an
+embedded LED that lights up blue or white to show the target cylinder
+and where it should go next.
+
+Each trial follows a fixed sequence (Figure~\ref{fig:task_sequence}).
+At the start, two lights of one color turn on, one on each side of a
+cylinder. Cylinders always rest blue-side down; the light color tells
+the participant which side should face down once the cylinder is
+placed. When the participant lifts the correct cylinder, one light
+turns off and the other stays on, marking the target peg. The
+participant moves the cylinder to that peg and places it, which turns
+the remaining light off. For blue-light trials, the cylinder is moved
+directly, with no rotation; for white-light trials, the cylinder must
+be inverted first.
 
 \begin{figure}[h]
 \centering
-% \includegraphics[width=0.6\textwidth]{figures/task_board.png}
-\caption{Task board layout. Four center pegs hold the cylinders at rest.
-Eight outer pegs illuminate blue or white via embedded LEDs to indicate
-the target cylinder and destination for the next move.}
-\label{fig:task_board}
+\includegraphics[width=1\textwidth]{figures/Task.png}
+\caption{One trial, step by step. (A) Both lights (blue) turn on on one row. 
+(B) The participant lifts the cylinder; one light turns off,
+one stays on to mark the target. (C) The cylinder is placed on the lit
+peg, which then turns off, completing the trial. (D) After a 2-second
+pause, the next trial starts, this time with both lights on the
+another row (white).}
+\label{fig:task_sequence}
 \end{figure}
+
+The board is electrified with conductive paint, giving real-time
+detection of cylinder placement and removal: touching a cylinder to a
+peg closes a circuit for that peg. This gives a direct, ground-truth
+signal for whether a cylinder is on a peg or in transit, without
+relying on the vision pipeline.
 
 \subsection{Vision}
 \label{subsec:vision}
 
-Two camera streams feed the pipeline. The dVRK endoscopic camera provides
-the stereo view used at the surgeon console. An Intel RealSense D405
-depth camera, mounted next to the task board, provides a fixed external
-RGB-D view of the workspace, independent of console head motion.
-% TODO: auxiliary camera view -- extra pedal toggles a second view
-% (top or side of task pad) during robot control, for added depth
-% perception. Describe pedal mapping and where the view is displayed.
+The main camera is the dVRK endoscope, mounted on the ECM. It gives
+the stereo view the surgeon sees at the console and feeds the pipeline
+live.
+
+An Intel RealSense D405 depth camera was mounted next to the ECM
+(Figure~\ref{fig:ecm_pedals}). Its depth stream is not used live;
+instead, it is used post-hoc for the SAM2-based 3D localization
+described in Section~\ref{sec:methods}. Alongside the D405, a second
+camera, a Logitech HD1080 webcam, was tried as an optional live second
+view for the participant, at either the top or the side of the task
+pad, with an extra pedal to switch to it during the task. This live
+second-view setup was tested but not adopted into the final system.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.9\textwidth]{figures/depth_ecm_single_pedals_force.png}
+\caption{Camera, pedal, and force sensor setup. A: the dVRK ECM with
+the Intel RealSense D405 mounted on the side; the white arrows mark
+the two positions tried for a live second camera, at the top and at
+the side of the task pad. B: the camera tried for that live second
+view, a Logitech HD1080 webcam. C: the extra foot pedal (corner right)
+used to switch to that view during a trial; this live second-view
+setup was not adopted into the final system. D: the ATI force sensor (Section~\ref{subsec:sensing}). E: the same sensor mounted
+under the task pad, circled in red.}
+\label{fig:ecm_pedals}
+\end{figure}
 
 \subsection{Sensing}
 \label{subsec:sensing}
 
-Three further modalities complement the two camera streams. Kinematic
-data -- joint positions, velocities, and tool-tip pose -- is read
-directly from the patient-side manipulators (PSMs). Task start and end
-events are detected by an Arduino-based trigger circuit, independent of
-the vision and kinematic streams. Contact forces are measured by an ATI
-force sensor mounted underneath the task pad, capturing forces
-transmitted through the board as cylinders are placed and removed.
+Three more kinds of data support the vision data above. Kinematic
+data, joint positions, velocities, and tool-tip position, is read
+directly from the patient-side arms (PSMs). An Arduino-based circuit
+detects when a task starts and ends, separate from the vision and
+kinematic data. Contact force is measured by an ATI force sensor under
+the task pad, which picks up force as cylinders are placed and removed
+(Figure~\ref{fig:ecm_pedals}, panels D and E).

@@ -7,7 +7,7 @@
 % This is a separate deliverable from the thesis (main.tex / sections/).
 % It mirrors the thesis structure but is condensed for review, and
 % marks open items as [TODO] / PLACEHOLDER rather than writing full
-% prose -- the point is to align on scope and structure before the
+% prose, the point is to align on scope and structure before the
 % thesis content is finalized.
 \documentclass[11pt]{article}
 \usepackage[utf8]{inputenc}
@@ -18,11 +18,11 @@
 \usepackage{hyperref}
 
 \title{Real-Time Multimodal Performance Assessment for dVRK \\
-\large Paper Outline -- Draft for Review}
+\large Paper Outline: Draft for Review}
 
 % TODO (with the group): confirm author order and affiliations.
 % Placeholder order below: student first, mentors, co-supervisor,
-% supervisor/corresponding last -- standard convention, not yet
+% supervisor/corresponding last, standard convention, not yet
 % confirmed with anyone listed.
 \author{
   Shujiro Shobayashi$^{1,2}$ \and
@@ -59,19 +59,20 @@ real-time measures. We demonstrate the system on a physical dVRK, validating the
 
 \subsection*{1. Introduction}
 \begin{itemize}
-  \item \textbf{1.1 Scope} -- Measures performance on one well-defined
+  \item \textbf{1.1 Scope}: Measures performance on one well-defined
   task (peg transfer), not global surgical skill; task-level metrics
   are objective and real-time-computable, a global skill judgment is
   neither.
-  \item \textbf{1.2 Goal} -- Real-time dVRK peg-transfer monitoring,
-  computed directly from sensor/vision data, no human rater. Four
-  measures tracked: completion time, path length, angular displacement,
-  object state. Long-term vision: closed-loop, difficulty-adaptive task.
-  \item \textbf{1.3 Motivation} -- (a) real-time feedback accelerates
+  \item \textbf{1.2 Goal}: Real-time dVRK peg-transfer monitoring,
+  computed directly from sensor/vision data, no human rater. Five
+  measures tracked: completion time, path length, rate of orientation
+  change, angular displacement, object state. Long-term vision:
+  closed-loop, difficulty-adaptive task.
+  \item \textbf{1.3 Motivation}: (a) real-time feedback accelerates
   learning~\cite{laca2022}; (b) automated capture catches events a
   human observer misses; (c) multimodal data can surface metrics beyond
   completion time.
-  \item \textbf{1.4 Contribution} -- Closes the gap between offline
+  \item \textbf{1.4 Contribution}: Closes the gap between offline
   accurate measurement and real-time-but-human-scored feedback: a
   multimodal, automated system, live, on the physical robot, for one
   task.
@@ -79,17 +80,16 @@ real-time measures. We demonstrate the system on a physical dVRK, validating the
 
 \subsection*{2. Related Work}
 \begin{itemize}
-  \item \textbf{2.1 Post-Hoc Kinematic Analysis} -- JIGSAWS-style
-  skill proxies (path length, velocity, jerk) computed from recorded
-  kinematics~\cite{jigsaws}; accurate but offline.
-  \item \textbf{2.2 Post-Hoc Vision} -- Object detection on recorded
-  video for task-progress tracking; accurate but too heavy for
-  real-time.
-  \item \textbf{2.3 Real-Time Multimodal Skill Prediction} -- Closest
+  \item \textbf{2.1 Post-Hoc Analysis}: JIGSAWS-style~\cite{jigsaws}
+  kinematics and video, both offline: skill proxies (path length,
+  velocity, jerk) computed from recorded kinematics; object detection
+  on recorded video for task-progress tracking, accurate but too heavy
+  for real-time.
+  \item \textbf{2.2 Real-Time Multimodal Skill Prediction}: Closest
   technical precedent (Hu et al.~\cite{hu2026}): kinematic + vision
   fusion, real-time-capable model, but evaluated offline on recorded
   trials and predicts a general OSATS score, not task-specific metrics.
-  \item \textbf{2.4 Real-Time Feedback Attempts} -- Closest in spirit
+  \item \textbf{2.3 Real-Time Feedback Attempts}: Closest in spirit
   (Laca et al.~\cite{laca2022}): real-time feedback RCT on physical
   hardware, but the performance measure behind the feedback is scored
   post-hoc by blinded human raters.
@@ -102,13 +102,10 @@ real-time measures. We demonstrate the system on a physical dVRK, validating the
 \hline
 \textbf{Approach} & \textbf{What it does} & \textbf{Limitation} \\
 \hline
-Post-hoc kinematic analysis (JIGSAWS-style) &
-Path length, velocity, jerk as skill proxies &
-Offline; not live \\[4pt]
-\hline
-Post-hoc vision &
-Object detection on recorded video for task-progress &
-Computationally heavy; not real-time \\[4pt]
+Post-hoc analysis (JIGSAWS-style: kinematics + video) &
+Path length, velocity, jerk from kinematics; object detection from
+video for task-progress &
+Offline; not live; vision side also computationally heavy \\[4pt]
 \hline
 Real-time multimodal skill prediction (Hu et al.~\cite{hu2026}) &
 Fuses kinematic + vision data from the da Vinci system to predict OSATS
@@ -121,9 +118,13 @@ RCT: real-time feedback during a robotic dissection task, on physical
 hardware &
 Performance is still scored post-hoc, by blinded human video review \\[4pt]
 \hline
+\textbf{This work} &
+Multimodal, automated, on the physical robot, live &
+None (the gap this thesis fills) \\
+\hline
 \end{tabular}
 \caption{Related work on surgical task assessment, compared against the
-requirements this thesis targets -- matches \texttt{tab:related\_work}
+requirements this thesis targets, matching \texttt{tab:related\_work}
 in \texttt{sections/background.tex}.}
 \label{tab:outline_related_work}
 \end{table}
@@ -131,60 +132,66 @@ in \texttt{sections/background.tex}.}
 
 \subsection*{3. System \& Task Setup}
 \begin{itemize}
-  \item \textbf{3.1 Hardware} -- dVRK: da Vinci S console, da Vinci Si
+  \item \textbf{3.1 Hardware}: dVRK: da Vinci S console, da Vinci Si
   patient-side arms, PSM1/PSM2, with bipolar fenestrated forceps.
-  \item \textbf{3.2 Formative Study} -- Prior data collection (27
-  novices, 9 experts -- robotic surgeons with $>$250 hours of
-  laparoscopic teleoperated experience) for Mary Kate's study on fine
-  wrist control as a marker of teleoperation expertise; the author
-  assisted in data collection. Findings informed the task board design
-  below: experts frustration with unimanual
-  control (PSM1 only), no being allowed toclutch, no camera repositioning; 
-  and, with novice operators, non-smooth motion that damaged pegs on the original
-  board. High success rates and peg breakage during this study motivated
-  the shorter-peg board used here, which raises task difficulty while
-  preventing breakage. 
-  \item \textbf{3.3 Task} -- Cylinder-on-peg transfer: 4 center pegs
+  \item \textbf{3.2 Formative Study}: Prior data collection (27
+  novices, 9 experts, robotic surgeons with $>$250 hours of
+  laparoscopic teleoperated experience) for Mary Kate Gale's study on
+  fine wrist control as a marker of teleoperation expertise; the author
+  assisted in data collection. Findings: participant-preferred camera
+  views; frustration with unimanual control (PSM1 only, no clutch, no
+  camera repositioning); with novice operators, non-smooth motion that
+  damaged pegs on the board. High success rates plus peg breakage
+  motivated a new, lower-peg-height board, built but not used in this
+  thesis; instead it, and these findings, motivate the closed-loop,
+  difficulty-adaptive task proposed as future work (Section 7).
+  \item \textbf{3.3 Task}: Cylinder-on-peg transfer: 4 center pegs
   (rest position), 8 outer pegs with blue/white LEDs (target
   indication), conductive-paint board for ground-truth contact
-  detection. \emph{[Figure 1 -- task board]}
-  \item \textbf{3.4 Vision} -- dVRK endoscopic stereo camera; Intel
+  detection. \emph{[Figure 1: task board]}
+  \item \textbf{3.4 Vision}: dVRK endoscopic stereo camera; Intel
   RealSense D405 depth camera, fixed external view; External camera for additional view, pedal-triggered.
-  \item \textbf{3.5 Sensing} -- PSM kinematics; Arduino-based
+  \item \textbf{3.5 Sensing}: PSM kinematics; Arduino-based
   task start/end trigger; ATI force sensor under the task pad.
 \end{itemize}
 
 \subsection*{4. Methods}
 \begin{itemize}
-  \item \textbf{4.1 Pipeline Overview} -- Integrated pipeline, not
+  \item \textbf{4.1 Pipeline Overview}: Integrated pipeline, not
   independent scripts: lift $\to$ Arduino signal $\to$ clock starts;
   place $\to$ Arduino signal $\to$ clock stops $\to$ HSV orientation
   check; end of trial $\to$ force graph displayed.
-  \emph{[Figure 2 -- pipeline diagram; Table 2 -- data/timing/feedback
+  \emph{[Figure 2: pipeline diagram; Table 2: data/timing/feedback
   summary]}
-  \item \textbf{4.2 Real-Time GUI \& Trial Clock} -- Arduino-triggered
-  start/stop; path length accrues while clock runs. \emph{[Figure 3 --
+  \item \textbf{4.2 Real-Time GUI \& Trial Clock}: Arduino-triggered
+  start/stop; path length accrues while clock runs. \emph{[Figure 3:
   GUI screenshot]} [TODO: source code reference/appendix]
-  \item \textbf{4.3 Object Detection} -- YOLOv8~\cite{yolov8}, 4 classes
-  (cylinder, inactive/blue/white peg); backbone for 4.5--4.6. [TODO:
+  \item \textbf{4.3 Object Detection}: YOLOv8~\cite{yolov8}, 4 classes
+  (cylinder, inactive/blue/white peg); backbone for 4.6--4.7. [TODO:
   training data, accuracy]
-  \item \textbf{4.4 Path Length} -- [TODO: computation method --
+  \item \textbf{4.4 Path Length}: [TODO: computation method,
   kinematic tool-tip pose vs. vision-tracked cylinder]
-  \item \textbf{4.5 Angular Displacement} -- HSV segmentation on
+  \item \textbf{4.5 Rate of Orientation Change}: Instrument-tip angular
+  velocity, computed directly from PSM kinematics while the clock
+  runs; follows Sharon et al.~\cite{sharon2021}, who found it separates
+  expert from novice performance alongside task time and path length.
+  [TODO: exact computation method, sampling rate]
+  \item \textbf{4.6 Angular Displacement}: HSV segmentation on
   YOLOv8-detected cylinder crop; orientation estimate at placement.
   [TODO: color thresholds / angle derivation]
-  \item \textbf{4.6 Object State Detection} -- Correct/incorrect
-  placement scoring from 4.5 against the lit target peg; separately,
-  a 4-class state classifier (stationary/held/dropped/lost) augmented
-  with XGBoost~\cite{xgboost}. [TODO: classifier details, training data]
-  \item \textbf{4.7 Ground Contact Detection} -- ATI force sensor;
+  \item \textbf{4.7 Object State Detection}: Correct/incorrect
+  placement scoring from 4.6 against the lit target peg; separately,
+  a 4-class state classifier (stationary/held/dropped/lost, out of the
+  ECM's view) augmented with XGBoost~\cite{xgboost}. [TODO: classifier
+  details, training data]
+  \item \textbf{4.8 Ground Contact Detection}: ATI force sensor;
   displayed as a post-trial 2D graph (time vs.\ force in N), not
-  streamed live. \emph{[Figure 4 -- force graph]}
-  \item \textbf{4.8 3D Localization (Post-Hoc)} -- SAM2-based~\cite{sam2}
+  streamed live. \emph{[Figure 4: force graph]}
+  \item \textbf{4.9 3D Localization (Post-Hoc)}: SAM2-based~\cite{sam2}
   cylinder segmentation from the D405 depth stream, $(x,y,z)$ over the
   trial.
   Not real-time (SAM2 runtime exceeds the trial budget); serves as an
-  offline validation reference for 4.4/4.5, not a delivered real-time
+  offline validation reference for 4.4/4.6, not a delivered real-time
   measure. Early real-time attempt was unreliable [TODO: failure mode].
 \end{itemize}
 
@@ -207,6 +214,12 @@ Path length &
 Real-time &
 Continuous while clock runs &
 Numeric running total &
+Multiple \\[4pt]
+\hline
+Rate of orientation change &
+Real-time &
+Continuous while clock runs &
+Numeric running value &
 Multiple \\[4pt]
 \hline
 Object detection (YOLOv8~\cite{yolov8}) &
@@ -249,18 +262,18 @@ Single \\
 }
 \caption{Data collected by the pipeline, its timing class, trigger, the
 feedback form it reaches the trainee in, and whether the technique
-supports single or multiple cylinders on the task pad at once -- matches
+supports single or multiple cylinders on the task pad at once, matching
 \texttt{tab:data\_timing} in \texttt{sections/methods.tex}.}
 \label{tab:outline_data_timing}
 \end{table}
 
 \newpage
 
-\subsection*{5. Results \& Evaluation -- PLACEHOLDER}
+\subsection*{5. Results \& Evaluation: PLACEHOLDER}
 % Not yet written in the thesis; proposed structure for review.
 
 
-\subsection*{6. Discussion -- PLACEHOLDER}
+\subsection*{6. Discussion: PLACEHOLDER}
 
 
 \subsection*{7. Conclusion \& Future Work}
