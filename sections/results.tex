@@ -1,1 +1,57 @@
 ﻿\section{Results}
+\label{sec:results}
+
+The results below come from bench trials run by the author on the
+physical dVRK, used to validate that the pipeline works as described
+in Section~\ref{sec:methods}, not from a study with trainees; that
+study is future work (Section~\ref{sec:conclusion}). Rather than
+validating each measure in isolation, this chapter follows the same
+logic as the pipeline itself (Section~\ref{subsec:pipeline_overview}):
+the measures are merged into one system, so results are shown as what
+one trial, run through the whole pipeline at once, actually produces,
+with timing broken out on its own, since it calls for a direct,
+quantitative check against the real-time claim this thesis makes.
+
+\subsection{An Integrated Trial}
+\label{subsec:results_integrated_trial}
+
+% PLACEHOLDER: walk through one representative trial end to end, in
+% the order the pipeline itself produces it (Section~\ref{subsec:pipeline_overview}):
+% trial time and path length live in the GUI; rate of orientation
+% change printed to the terminal; the upright/color-down check and
+% object-state classification at placement; the force popup after the
+% trial ends. The point is to show these together, as the trainee
+% would actually see them from a single trial, not as separate
+% one-off numbers.
+% TODO: pick 1-3 representative trials (e.g. a clean success, a drop,
+% a wrong-color placement) and report what every measure showed for
+% each, ideally with a screenshot/photo of the GUI and force popup.
+
+\subsection{Timing}
+\label{subsec:results_timing}
+
+This thesis claims the pipeline is real-time. This section checks
+that claim directly, per module, against measured timing rather than
+against the code's own assumptions about itself.
+
+Trial time, path length, and rate of orientation change
+(Section~\ref{subsec:kinematic_metrics}) update continuously while the
+clock runs, driven by a background process that assumes a 200~Hz
+internal clock (Section~\ref{subsec:gui_trial_clock}). The measured
+update rate, both how often the GUI actually refreshes and how often
+new PSM pose samples actually arrive, was [TODO] Hz.
+
+The orientation check (Section~\ref{subsec:angular_displacement}) has
+a built-in 0.5~s settle delay after the Arduino's ``Target hit''
+signal, plus processing time, plus up to two further 0.5~s retries if
+the cylinder is not found in the crop. Measured from that event to the
+printed result, over [TODO] trials, the time was [TODO]~s on average
+and [TODO]~s at the slowest.
+
+The object-state classifier (Section~\ref{subsec:object_state}) runs
+once per frame; its measured inference time, over [TODO] calls, was
+[TODO]~ms on average and [TODO]~ms at the slowest.
+
+The force popup (Section~\ref{subsec:ground_contact}) appears once a
+trial ends; the measured time from trial end to the popup becoming
+visible was [TODO]~s.

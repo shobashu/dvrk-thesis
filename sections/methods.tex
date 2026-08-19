@@ -5,16 +5,24 @@
 \label{subsec:pipeline_overview}
 
 The measures below come from one integrated pipeline, not independent
-scripts. Lifting the cylinder off its center peg triggers the Arduino
+scripts, built from modules the user can enable independently at the
+start of a session: the trial trigger itself, path length, orientation
+rate, the force sensor, and the vision-based orientation check
+(Section~\ref{subsec:gui_trial_clock}). What follows describes each
+module as merged into that one pipeline, for the case where all of
+them are enabled.
+
+Lifting the cylinder off its center peg triggers the Arduino
 board signal (Section~\ref{subsec:task}); this starts the GUI trial
 clock and begins path-length accumulation. Placing the cylinder on its
 target peg triggers the matching Arduino signal and stops the clock. At
 that instant, HSV segmentation on the YOLOv8-detected~\cite{yolov8} cylinder estimates
 its orientation and checks whether the correct face, blue or white, as
 indicated by the lit target peg (Section~\ref{subsec:task}), ended
-face down. Once the trial ends, the GUI plots the total force applied to
-the task pad during the trial: time on the x-axis, force in newtons on
-the y-axis, read from the ATI sensor.
+face down. Once the trial ends, a popup reports the force applied to
+the task pad during the trial, read from the ATI sensor: the peak
+force, how many times it crossed a fixed contact threshold, and a
+graph of force against time.
 
 Table~\ref{tab:data_timing} summarizes every measure the pipeline
 collects: its timing class, what triggers it, and how it reaches the
@@ -55,7 +63,7 @@ Multiple \\[4pt]
 Cylinder orientation (HSV) &
 Real-time, delayed &
 Continuous, event-triggered at placement &
-Binary indicator &
+Two binary indicators (upright, correct color down) &
 Multiple \\[4pt]
 \hline
 Object state (4 classes) &
@@ -66,8 +74,8 @@ Single \\[4pt]
 \hline
 Contact force &
 Real-time, delayed &
-Continuous, after trial ends &
-2D graph, time (x) vs.\ force in N (y) &
+Continuous, read live; shown after trial ends &
+Popup: peak force, threshold crossings, force/time graph &
 Multiple \\[4pt]
 \hline
 Additional camera &
@@ -91,79 +99,242 @@ supports single or multiple cylinders on the task pad at once}
 \end{table}
 
 \subsection{Real-Time GUI \& Trial Clock}
+\label{subsec:gui_trial_clock}
 
-The trial clock starts and stops from the Arduino cylinder-lift/placement
-signal (Section~\ref{subsec:pipeline_overview}), not from pedal state.
-Path length accrues on the GUI for the full duration the clock runs.
-% TODO: code to be copied into code/ from external folder once path is
-% provided.
+At the start of a session, the trainer chooses which trial trigger
+drives the clock: MONO pedal + teleop, where the clock and path length
+only run while the pedal is held and teleop is enabled, or the Arduino
+cylinder lift/place signal (Section~\ref{subsec:pipeline_overview}),
+where the clock starts and stops on its own once a trial begins,
+independent of pedal state. The results in this thesis use the
+Arduino trigger. Either way, the clock is driven by a background
+process running at 200~Hz, and shown in two small, always-on-top
+floating windows.
+
+Each window shows the elapsed time against the trial's time limit, a
+progress bar that turns from green to orange once most of that time
+has passed, and orange to red as the limit gets close, and the
+running path length for both arms, in millimeters, all updated live
+while the clock runs.
+% TODO: code appendix reference (source: dvrk_shujiro/dvrk_shujiro/,
+% main.py + gui/timer_window.py + nodes/task_timer_node.py)
+
+\subsection{Kinematic Metrics}
+\label{subsec:kinematic_metrics}
+
+Two measures are computed directly from PSM kinematics, not vision:
+path length and rate of orientation change. Both accumulate
+continuously while the trial clock runs, from consecutive tool-tip
+pose samples.
+
+\paragraph{Path length.} At each new tool-tip position
+$p_i = (x_i, y_i, z_i)$, the Euclidean distance to the previous sample
+$p_{i-1}$ is added to a running total:
+\begin{equation}
+L = \sum_{i=1}^{N} \lVert p_i - p_{i-1} \rVert
+  = \sum_{i=1}^{N} \sqrt{(x_i - x_{i-1})^2 + (y_i - y_{i-1})^2 + (z_i - z_{i-1})^2}.
+\end{equation}
+$L$ is shown live in the GUI, in millimeters.
+
+\paragraph{Rate of orientation change.} At each new tool-tip
+orientation sample, given as a unit quaternion $Q_{j+1}$, the rotation
+from the previous sample $Q_j$ is found from the quaternion difference
+\begin{equation}
+\Delta Q_{j,j+1} = Q_{j+1} \, Q_j^{-1},
+\end{equation}
+a unit quaternion representing a rotation by angle
+$\Delta\theta_{j,j+1}$, extracted from its first component $q_1$ as
+\begin{equation}
+\Delta\theta_{j,j+1} = 2 \cos^{-1}(q_1).
+\end{equation}
+The reported value follows Equation~8 of Sharon et
+al.~\cite{sharon2021}, whose rate-of-orientation-change metric this
+measure is based on:
+\begin{equation}
+C = \frac{1}{N-1}\sum_{j=1}^{N-1} \frac{|\Delta\theta_{j,j+1}|}{\Delta t_{j,j+1}},
+\end{equation}
+where $N$ is the number of samples in the trial and $\Delta
+t_{j,j+1}$ is the time between consecutive samples $j$ and $j+1$,
+reported in degrees per second. Unlike path length, this is not drawn
+in the GUI: it is printed to the terminal once per second during the
+trial. Sharon et al. found this measure separated expert from novice
+performance on needle-driving and suturing tasks, alongside classical
+measures such as task time and path length.
+
+\subsection{Ground Contact Detection}
+\label{subsec:ground_contact}
+
+The ATI force sensor is connected to a separate computer, which
+streams its readings over UDP to the main pipeline; a receiver process
+listens for these packets and republishes them as a live force
+signal. Contact force is therefore read live throughout the trial, so
+the measurement itself is real-time; showing it to the trainee live
+was not the goal, though. Streaming it continuously would compete for
+the trainee's attention with the trial clock and path length during
+the trial itself, so it is instead summarized right after each trial
+ends, when the trainee can focus on it.
+
+Before use, the raw force signal is smoothed with a trailing moving
+average, over 5 samples, to cut sensor and electrical noise. The same
+smoothed signal is used for the peak value, the threshold-crossing
+count, and the plotted graph below, so all three stay consistent with
+each other.
+
+Once the trial ends, a popup window, shown for a few seconds, reports
+the peak (smoothed) force reached during the trial, how many times it
+crossed a fixed contact threshold of 5~N, and a graph of the smoothed
+force against time over the trial, with that peak and threshold
+marked.
 
 \subsection{Object Detection}
-% TODO: YOLOv8 detector, trained on 4 classes: cylinders, inactive
-% pegs, blue pegs, white pegs. Feeds the angular-displacement and
-% object-state methods below.
+\label{subsec:object_detection}
 
-\subsection{Path Length}
-% TODO
+The YOLOv8 detector was trained on video recorded during the task
+itself. Frames were extracted from that recording, uploaded to
+Roboflow~\cite{roboflow}, and manually labeled into four classes:
+cylinder, inactive peg, and lit peg (blue or white).
 
-\subsection{Rate of Orientation Change}
-\label{subsec:orientation_rate}
+The labeled frames were combined with a larger set of unlabeled frames
+from the same recordings, auto-labeled using an earlier checkpoint of
+the detector; frames where that checkpoint found nothing were kept as
+background frames rather than dropped. This combined set was split
+70/20/10 into training, validation, and test sets.
 
-The rate of orientation change is computed directly from PSM
-kinematics, the angular velocity of the instrument tip while the trial
-clock runs. This measure follows Sharon et al.~\cite{sharon2021}, who
-found it separated expert from novice performance on needle-driving
-and suturing tasks, alongside classical measures such as task time and
-path length.
-% TODO: exact computation method, kinematic signal used, sampling rate.
+The detector itself is a YOLOv8s model, pretrained on COCO and
+fine-tuned on this dataset for 100 epochs at 640$\times$640
+resolution, with the following augmentation applied during training:
+HSV color jitter (hue $\pm 0.015$, saturation $\pm 0.5$, value $\pm
+0.3$), horizontal flip (50\% of images, no vertical flip), scale
+jitter ($\pm 0.3$), translation ($\pm 0.1$), mosaic augmentation
+(50\% of images), and small-angle rotation ($\pm 5^\circ$).
+% TODO: training/validation accuracy (mAP) once a final run is logged.
+
+At inference time, the detector runs continuously on the left camera
+frame, at a lower resolution than training (320$\times$320), and
+feeds the orientation and object-state methods below.
 
 \subsection{Angular Displacement}
 \label{subsec:angular_displacement}
 
-Cylinder orientation is estimated by HSV segmentation on the region
-YOLOv8 detects as the cylinder.
-% TODO: describe the HSV method itself: color thresholds, how the
-% orientation angle is derived from the segmented mask.
+Cylinder orientation is estimated by HSV color segmentation on the
+cylinder crop the YOLOv8 detector returns. Two color masks are
+extracted from the crop, one for the blue region and one for the
+white region, using fixed HSV thresholds tuned for the task board's
+lighting. For each mask, the centroid is the area-weighted average
+over all connected regions above a minimum pixel count, not just the
+largest one, so that an occluder splitting a color region into two
+visible parts does not throw off the centroid.
 
-This estimate is computed at placement and feeds the
-orientation-correctness check in Object State Detection below.
+The orientation angle is the angle between the two centroids,
+measured so that $0^\circ$ means the white cap sits directly above
+the blue body (upright) and $\pm 180^\circ$ means the cylinder is
+inverted:
+\begin{equation}
+\theta = \operatorname{atan2}(x_{\text{blue}} - x_{\text{white}},\;
+                               y_{\text{blue}} - y_{\text{white}}).
+\end{equation}
+
+This single angle feeds two independent checks, both computed at
+placement (Section~\ref{subsec:pipeline_overview}): whether the
+cylinder is upright, $|\theta| \le 20^\circ$, and whether the correct
+color, the one cued by the lit target peg, ended up facing down,
+taken from whichever centroid sits lower in the crop. A cylinder can
+pass one check and fail the other, e.g. upright but with the wrong
+color down.
+
+The check fires half a second after the target peg is hit, giving the
+cylinder time to settle, and retries up to three times, half a second
+apart, if no cylinder is found in the crop.
 
 \subsection{Object State Detection}
+\label{subsec:object_state}
 
-At placement, the orientation estimate from
-Section~\ref{subsec:angular_displacement} determines whether the
-cylinder landed correctly: the lit target peg (Section~\ref{subsec:task})
-specifies blue or white face down, and the trial is scored correct or
-incorrect against that target.
+At placement, the two checks from
+Section~\ref{subsec:angular_displacement} determine whether the
+cylinder landed correctly, upright and with the cued color facing
+down, against the lit target peg (Section~\ref{subsec:task}).
 
 Separately, a classifier tracks the cylinder across four states:
 stationary (at rest on a peg), held (grasped by the instrument),
-dropped (off the board), and lost (out of the ECM's view).
-% TODO: classifier details, training data, XGBoost augmentation.
-% Cross-check against conductive-paint task board signal (subsec:task)
-% and ground contact detection below.
+dropped (off the board), and lost (out of the ECM's view). This
+tracks one cylinder at a time, not multiple cylinders in play at once.
 
-\subsection{Ground Contact Detection}
+A first version used a rule-based classifier, driven by hand-tuned
+thresholds on the YOLOv8 detections frame by frame: pixel
+displacement and velocity, and counters for sudden spikes and settled
+periods. This was not accurate enough on its own, in particular it
+struggled to tell the held and dropped states apart.
 
-Contact force from the ATI sensor is not streamed live during the trial.
-Once the trial ends, the GUI displays it as a 2D graph, time on the
-x-axis and total force in newtons on the y-axis, showing how much force
-was applied to the task pad over the course of the trial.
+The rule-based classifier's own output was used to bootstrap training
+data for a learned classifier. For each frame, its rule-based state
+label, pixel velocity, bounding-box position $(x, y)$, and PSM1
+position and orientation quaternion were logged to CSV, alongside a
+video recording of the session. The state column was then
+hand-corrected by watching the recording against the CSV wherever the
+rule-based labeler had gotten it wrong, and this corrected data became
+the ground truth.
+
+An XGBoost classifier was trained on this corrected data: 300 trees,
+maximum depth 6, learning rate 0.05. Each frame's feature vector
+combines its current values with those of the four preceding frames
+and their frame-to-frame differences. The model was validated with
+stratified group $k$-fold cross-validation, grouped by contiguous
+same-state segments rather than individual frames, so that
+near-duplicate frames from the same event could not leak across
+folds, and scored by macro-averaged F1, so that the rarer states
+(dropped, lost) count as much as the common ones (stationary, held).
+% TODO: cross-validated F1-macro (mean +/- std) once a final training
+% run is logged.
 
 \subsection{3D Localization (Post-Hoc)}
+\label{subsec:localization}
 
-The pipeline includes a 3D localization method for the cylinder, tracking
-its $(x, y, z)$ position from the RealSense D405 depth stream. An early
-version of this method ran in real time, but tracking was unreliable.
-% TODO: state the specific failure mode (noise / occlusion / drift / other)
-To improve accuracy, the method was rebuilt on Segment Anything 2
-(SAM2)~\cite{sam2} for cylinder segmentation. SAM2 produces an accurate
-mask, but its per-frame runtime exceeds the trial's real-time budget.
+The pipeline includes a 3D localization method for the cylinder,
+tracking its $(x, y, z)$ position from the RealSense D405 depth
+stream, for one cylinder at a time.
 
-This method therefore runs post-hoc, after the trial ends, not live
-during it. Its role in this thesis is validation, not live measurement:
-3D localization gives an accurate offline reference for cylinder
-position, used to check the real-time measures, path length and angular
-displacement, against ground truth. It is not one of the
-real-time measures the system delivers during a trial
-(Section~\ref{subsec:scope}).
+An early version of this method reused the same approach as the
+YOLOv8 object detector (Section~\ref{subsec:object_detection}): record from the depth
+camera, label the cylinder on Roboflow~\cite{roboflow}, and train a
+detector on that view, run live to get a real-time 3D position. This
+did not work well enough to use: detection lagged, accuracy was low,
+and the cylinder's centroid was often poorly localized.
+
+The method was rebuilt around Segment Anything 2
+(SAM2)~\cite{sam2} instead, run post-hoc rather than live. Before
+anything else, the D405's depth exposure, gain, laser power, color
+exposure, and white balance are tuned by hand against a live
+three-panel view (color, colorized depth, and a black/white
+depth-validity mask), until depth is valid across the whole board and
+every peg is clearly visible; the result is saved as a fixed camera
+setting reused by every later stage. The D405 is then calibrated
+once: three clicks on points of known equal height (e.g.\ task board
+corners) fix the board's true "up" axis, correcting for any camera
+tilt, and each of the twelve peg tops is then clicked in turn, each
+click averaging 30 depth frames to get a stable 3D position; the
+twelve positions are reviewed in a 3D plot, checking pairwise height
+differences for outliers, before being saved as a fixed reference.
+
+During a session, the D405's color and depth streams are recorded to
+a single file, using the tuned exposure settings; PSM kinematics are
+recorded separately, through the pipeline described above. Afterward,
+frames and their aligned depth images are extracted from that
+recording, and SAM2 segments the cylinder in them: a person clicks a
+few points on the cylinder in a handful of frames to tell SAM2 what
+to track, and SAM2 propagates that mask through the rest of the clip
+on its own. Finally, for each frame, every pixel inside the mask is
+converted to a 3D point using the depth image and the camera's
+calibration, and the median of those points is taken as the
+cylinder's position for that frame; comparing that position to the
+fixed peg positions from calibration gives its distance from, and
+height above, the nearest peg, letting the full trial be visualized
+as a 3D trajectory over the board.
+
+SAM2 produces an accurate mask, but propagating it through a clip runs
+at roughly 5 frames per second, well under the trial's real-time
+budget, so this method runs post-hoc, once a trial (or a small batch
+of trials) has ended, not live during it. Its role in this thesis is
+validation, not live measurement: it gives an accurate offline
+reference for cylinder position, used to check the real-time path
+length measure against ground truth. It is not one of the real-time
+measures the system delivers during a trial (Section~\ref{subsec:scope}).

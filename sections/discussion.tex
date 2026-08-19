@@ -1,1 +1,75 @@
 ﻿\section{Discussion}
+\label{sec:discussion}
+
+\subsection{Does This Close the Gap?}
+
+Section~\ref{sec:background} lined up related work against three
+requirements, automated, real-time, and on physical hardware, and
+found that no prior approach met all three at once
+(Table~\ref{tab:related_work}). This system computes trial time, path
+length, and rate of orientation change directly from PSM kinematics,
+checks cylinder orientation and object state directly from vision,
+and reports contact force, all without a human rater, on the physical
+dVRK, during the trial itself (Section~\ref{sec:methods}). The one
+exception is 3D localization, which runs post-hoc, not live; but it
+was never delivered as one of the real-time measures
+(Section~\ref{subsec:localization}), it exists to validate the
+others, so it is not itself a gap in that claim.
+% TODO: revisit this once Results is complete, in case the timing
+% numbers change this conclusion.
+
+\subsection{What the Timing Means}
+\label{subsec:discussion_timing}
+
+% PLACEHOLDER, pending Section~\ref{subsec:results_timing}'s numbers.
+% TODO: interpret the measured latencies. Is the slowest module fast
+% enough that a trainee would not perceive the feedback as delayed,
+% e.g. compared against typical human reaction time, or against how
+% Laca et al.'s feedback loop was real-time even though the
+% measurement behind it was not (Section~\ref{sec:background})? Which
+% module is the bottleneck, and does closing it matter for the
+% trainee-facing goal (Section~\ref{subsec:goal})?
+
+\subsection{Limitations}
+
+This thesis reports bench trials run by the author, not a trainee
+study (Section~\ref{sec:results}); how these measures perform for
+actual novice and expert trainees, the population this system is
+ultimately for (Section~\ref{subsec:motivation}), is untested.
+
+The object-state classifier's reliability is not yet established: the
+rule-based labeler it was bootstrapped from struggled specifically to
+tell the held and dropped states apart
+(Section~\ref{subsec:object_state}), and the learned classifier's own
+cross-validated accuracy is not yet measured. Because placement
+scoring and object state are reported independently
+(Section~\ref{subsec:object_state}), a classifier error here does not
+corrupt the orientation-based measures, but it does limit how much the
+object-state signal itself can be trusted for now.
+
+3D localization only runs post-hoc, at roughly 5 frames per second
+(Section~\ref{subsec:localization}), so it cannot itself be a
+delivered real-time measure; an earlier, real-time version was
+abandoned after it proved too laggy and inaccurate to trust. This is
+a deliberate scope choice, not an oversight, but it does mean cylinder
+position is not independently validated live, only after the fact.
+
+Both the object-state classifier and 3D localization track one
+cylinder at a time (Sections~\ref{subsec:object_state}
+and~\ref{subsec:localization}), even though the task itself allows
+multiple cylinders in play at once (Section~\ref{subsec:task});
+extending them to the multi-cylinder case is not yet done.
+
+The HSV thresholds behind cylinder orientation
+(Section~\ref{subsec:angular_displacement}) were tuned for one
+camera, one board, and one lighting setup; whether they still work
+under different lighting or camera placement has not been tested.
+
+\subsection{What This Sets Up}
+
+Two of the formative study's findings
+(Section~\ref{subsec:formative_study}) point past this thesis rather
+than into it: a redesigned, lower-peg task board, built but not used
+here, and the idea of a closed-loop, difficulty-adaptive task. Both,
+along with a trainee study of the system itself, are future work,
+taken up in Section~\ref{sec:conclusion}.

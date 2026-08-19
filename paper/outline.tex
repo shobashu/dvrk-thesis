@@ -157,42 +157,89 @@ in \texttt{sections/background.tex}.}
 
 \subsection*{4. Methods}
 \begin{itemize}
-  \item \textbf{4.1 Pipeline Overview}: Integrated pipeline, not
-  independent scripts: lift $\to$ Arduino signal $\to$ clock starts;
-  place $\to$ Arduino signal $\to$ clock stops $\to$ HSV orientation
-  check; end of trial $\to$ force graph displayed.
-  \emph{[Figure 2: pipeline diagram; Table 2: data/timing/feedback
-  summary]}
-  \item \textbf{4.2 Real-Time GUI \& Trial Clock}: Arduino-triggered
-  start/stop; path length accrues while clock runs. \emph{[Figure 3:
-  GUI screenshot]} [TODO: source code reference/appendix]
-  \item \textbf{4.3 Object Detection}: YOLOv8~\cite{yolov8}, 4 classes
-  (cylinder, inactive/blue/white peg); backbone for 4.6--4.7. [TODO:
-  training data, accuracy]
-  \item \textbf{4.4 Path Length}: [TODO: computation method,
-  kinematic tool-tip pose vs. vision-tracked cylinder]
-  \item \textbf{4.5 Rate of Orientation Change}: Instrument-tip angular
-  velocity, computed directly from PSM kinematics while the clock
-  runs; follows Sharon et al.~\cite{sharon2021}, who found it separates
-  expert from novice performance alongside task time and path length.
-  [TODO: exact computation method, sampling rate]
-  \item \textbf{4.6 Angular Displacement}: HSV segmentation on
-  YOLOv8-detected cylinder crop; orientation estimate at placement.
-  [TODO: color thresholds / angle derivation]
-  \item \textbf{4.7 Object State Detection}: Correct/incorrect
-  placement scoring from 4.6 against the lit target peg; separately,
-  a 4-class state classifier (stationary/held/dropped/lost, out of the
-  ECM's view) augmented with XGBoost~\cite{xgboost}. [TODO: classifier
-  details, training data]
-  \item \textbf{4.8 Ground Contact Detection}: ATI force sensor;
-  displayed as a post-trial 2D graph (time vs.\ force in N), not
-  streamed live. \emph{[Figure 4: force graph]}
-  \item \textbf{4.9 3D Localization (Post-Hoc)}: SAM2-based~\cite{sam2}
-  cylinder segmentation from the D405 depth stream, $(x,y,z)$ over the
-  trial.
-  Not real-time (SAM2 runtime exceeds the trial budget); serves as an
-  offline validation reference for 4.4/4.6, not a delivered real-time
-  measure. Early real-time attempt was unreliable [TODO: failure mode].
+  \item \textbf{4.1 Pipeline Overview}: One pipeline, built from
+  modules the user can enable independently at session start (trial
+  trigger, path length, orientation rate, force sensor, orientation
+  check). Walkthrough with everything on: lift $\to$ Arduino signal
+  $\to$ clock starts; place $\to$ Arduino signal $\to$ clock stops
+  $\to$ HSV orientation check; end of trial $\to$ force popup (peak,
+  threshold crossings, graph). \emph{[Figure 2: pipeline diagram;
+  Table 2: data/timing/feedback summary]}
+  \item \textbf{4.2 Real-Time GUI \& Trial Clock}: Trigger is a
+  session choice: MONO pedal + teleop (clock/path length run only
+  while pedal held) or Arduino cylinder lift/place (clock runs on its
+  own); this thesis's results use Arduino. 200~Hz clock; two
+  always-on-top windows; color-coded progress bar; live path length,
+  both arms. \emph{[Figure 3: GUI screenshot]} [TODO: source code
+  reference/appendix]
+  \item \textbf{4.3 Kinematic Metrics}: Path length and rate of
+  orientation change, both computed directly from PSM kinematics.
+  Path length: cumulative Euclidean distance between tool-tip
+  samples. Rate of orientation change: quaternion difference between
+  orientation samples $\to$ rotation angle $\to$ divided by elapsed
+  time $\to$ averaged over the trial, following Equation~8 of Sharon
+  et al.~\cite{sharon2021}, who found this metric separates expert
+  from novice performance alongside task time and path length.
+  (Formulas in thesis body.)
+  \item \textbf{4.4 Ground Contact Detection}: ATI sensor on a
+  separate computer, streamed over UDP to the pipeline; read live
+  (real-time capable), smoothed with a 5-sample moving average.
+  Shown to the trainee as a post-trial popup instead, by design, so
+  it doesn't compete for attention with the clock/path length during
+  the trial: peak (smoothed) force, count of crossings over a 5~N
+  threshold, and a force/time graph, all from the same smoothed
+  signal. \emph{[Figure 4: force graph]}
+  \item \textbf{4.5 Object Detection}: YOLOv8s~\cite{yolov8}, 4 classes
+  (cylinder, inactive/blue/white peg). Trained on frames from the
+  task's own recordings, labeled on Roboflow~\cite{roboflow}, plus
+  auto-labeled frames from an earlier checkpoint; 70/20/10
+  train/val/test split. Fine-tuned from COCO, 100 epochs,
+  640$\times$640, augmentation: HSV jitter, 50\% horizontal flip,
+  $\pm$0.3 scale, $\pm$0.1 translation, 50\% mosaic, $\pm$5$^\circ$
+  rotation. Runs at 320$\times$320 on the left camera at inference;
+  backbone for 4.6--4.7. [TODO: accuracy (mAP)]
+  \item \textbf{4.6 Angular Displacement}: HSV segmentation on the
+  YOLOv8-detected cylinder crop: blue/white masks, area-weighted
+  centroids (all connected regions above a pixel threshold, not just
+  the largest, so a split blob doesn't skew it), angle $=
+  \operatorname{atan2}$ between them ($0^\circ$ = upright). Feeds two
+  independent checks at placement: upright ($|\theta| \le 20^\circ$)
+  and correct color down (vs.\ the cued target); a cylinder can pass
+  one and fail the other. Fires 0.5~s after target hit, up to 3
+  retries.
+  \item \textbf{4.7 Object State Detection}: Upright/color-down
+  scoring from 4.6 against the lit target peg. Separately, a 4-class
+  state classifier (stationary/held/dropped/lost, out of the ECM's
+  view; single cylinder only). First a rule-based version
+  (pixel displacement/velocity, spike/settle counters); not accurate
+  enough (held vs.\ dropped), so its own output bootstrapped training
+  data (state, pixel velocity, bbox position, PSM1 pose+quaternion),
+  hand-corrected against a video recording as ground truth. XGBoost
+  classifier~\cite{xgboost} trained on that (300 trees, depth 6, LR
+  0.05; features include a 4-frame lag window + deltas); validated
+  with grouped stratified $k$-fold CV, scored by macro-F1 (weights
+  rare states like dropped/lost equally with common ones). [TODO:
+  F1-macro mean $\pm$ std]
+  \item \textbf{4.8 3D Localization (Post-Hoc)}: One cylinder at a
+  time. Early attempt reused the YOLOv8 approach (4.5) on the depth
+  camera's own view (record, label on Roboflow~\cite{roboflow}, train,
+  run live); not good enough (lag, low accuracy, poorly localized
+  centroid). Rebuilt on SAM2~\cite{sam2}, post-hoc, five stages: (1)
+  exposure tuning, hand-tuned exposure/gain/laser/white balance
+  against a live view until all pegs are clearly visible; (2) peg
+  registration, up axis from 3 equal-height clicks, then all 12 peg
+  tops clicked and averaged over 30 frames each, reviewed in 3D for
+  outliers; (3) record \& extract, color+depth recorded to one file
+  per session (PSM kinematics recorded separately), then frames +
+  aligned depth extracted; (4) segmentation, SAM2 segments the
+  cylinder from a few clicked points, propagated through the clip;
+  (5) visualization, each frame's masked pixels deprojected to 3D,
+  median = cylinder position, compared to the calibrated peg
+  positions for distance/height, giving a 3D trajectory over the
+  board. SAM2 propagation runs at $\sim$5~fps, well under real-time,
+  so this stays post-hoc; serves as an offline validation reference
+  for path length (4.3),
+  not a delivered real-time measure.
 \end{itemize}
 
 
@@ -231,7 +278,7 @@ Multiple \\[4pt]
 Cylinder orientation (HSV) &
 Real-time, delayed &
 Continuous, event-triggered at placement &
-Binary indicator &
+Two binary indicators (upright, correct color down) &
 Multiple \\[4pt]
 \hline
 Object state (4 classes) &
@@ -242,8 +289,8 @@ Single \\[4pt]
 \hline
 Contact force &
 Real-time, delayed &
-Continuous, after trial ends &
-2D graph, time (x) vs.\ force in N (y) &
+Continuous, read live; shown after trial ends &
+Popup: peak force, threshold crossings, force/time graph &
 Multiple \\[4pt]
 \hline
 Additional camera &
@@ -270,10 +317,52 @@ supports single or multiple cylinders on the task pad at once, matching
 \newpage
 
 \subsection*{5. Results \& Evaluation: PLACEHOLDER}
-% Not yet written in the thesis; proposed structure for review.
+% Drafted in the thesis (results.tex); numbers still pending.
+Bench trials run by the author, not a trainee study (that is future
+work, Section 7). Organized around the merged pipeline rather than
+one subsection per measure, since the point is what one trial run
+through the whole system produces together, with timing broken out
+for a direct, quantitative check.
+\begin{itemize}
+  \item \textbf{5.1 An Integrated Trial}: 1--3 representative trials
+  (clean success, a drop, a wrong-color placement) walked through end
+  to end, in pipeline order: trial time/path length (GUI), orientation
+  rate (terminal), upright/color-down + object-state at placement,
+  force popup after. \emph{[Figure/screenshot: GUI + force popup per
+  trial]} [TODO: run and log the trials]
+  \item \textbf{5.2 Timing}: Measured, not assumed, latency per
+  module: GUI/kinematics update rate vs.\ the 200~Hz assumption;
+  orientation-check delay (0.5~s settle + processing + retries) vs.\
+  measured; object-state classifier per-frame inference time; force
+  popup delay after trial end. [TODO: all numbers; may be computable
+  from existing bench-trial logs if a completion timestamp is added]
+\end{itemize}
 
 
 \subsection*{6. Discussion: PLACEHOLDER}
+% Drafted in the thesis (discussion.tex); two pieces pending Results.
+\begin{itemize}
+  \item \textbf{6.1 Does This Close the Gap?}: Revisits Section 2's
+  three-way gap (automated / real-time / physical hardware); argues
+  this system closes it, with 3D localization's post-hoc timing as
+  the one exception, not itself a gap since it was never delivered as
+  a real-time measure.
+  \item \textbf{6.2 What the Timing Means}: Interprets the 5.2 latency
+  numbers, e.g.\ against human reaction time, and against Laca et
+  al.'s real-time-loop/non-real-time-measurement split (Section 2).
+  [TODO: pending 5.2 numbers]
+  \item \textbf{6.3 Limitations}: Bench trials only, no trainee study
+  yet; object-state classifier reliability not yet established
+  (rule-based labeler struggled at held/dropped, XGBoost accuracy
+  pending); 3D localization post-hoc only, real-time attempt
+  abandoned; object-state \& 3D localization both single-cylinder
+  only, despite the task allowing multiple; HSV thresholds tuned for
+  one camera/lighting setup, untested elsewhere.
+  \item \textbf{6.4 What This Sets Up}: Bridges to future work
+  (Section 7): the redesigned task board and closed-loop adaptive
+  task from the formative study (3.2), plus a trainee study of the
+  system itself.
+\end{itemize}
 
 
 \subsection*{7. Conclusion \& Future Work}
