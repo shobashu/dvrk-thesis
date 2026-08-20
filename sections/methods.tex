@@ -191,8 +191,14 @@ marked.
 
 The YOLOv8 detector was trained on video recorded during the task
 itself. Frames were extracted from that recording, uploaded to
-Roboflow~\cite{roboflow}, and manually labeled into four classes:
-cylinder, inactive peg, and lit peg (blue or white).
+Roboflow~\cite{roboflow}, and initially labeled into four classes:
+cylinder, inactive peg, and lit peg (blue or white). This multi-class
+version was dropped in favor of a single class, cylinder only: the
+outer pegs' lit/inactive state is already known directly from the
+conductive-paint circuit (Section~\ref{subsec:task}), so detecting it
+a second time through vision was redundant, and narrowing to one class
+let the detector concentrate on the one object every downstream
+measure actually depends on.
 
 The labeled frames were combined with a larger set of unlabeled frames
 from the same recordings, auto-labeled using an earlier checkpoint of
@@ -207,7 +213,8 @@ HSV color jitter (hue $\pm 0.015$, saturation $\pm 0.5$, value $\pm
 0.3$), horizontal flip (50\% of images, no vertical flip), scale
 jitter ($\pm 0.3$), translation ($\pm 0.1$), mosaic augmentation
 (50\% of images), and small-angle rotation ($\pm 5^\circ$).
-% TODO: training/validation accuracy (mAP) once a final run is logged.
+Final detector performance, measured on the held-out test split, is
+reported in Section~\ref{subsec:results_detection}.
 
 At inference time, the detector runs continuously on the left camera
 frame, at a lower resolution than training (320$\times$320), and
@@ -265,6 +272,81 @@ displacement and velocity, and counters for sudden spikes and settled
 periods. This was not accurate enough on its own, in particular it
 struggled to tell the held and dropped states apart.
 
+Concretely, the rule-based classifier runs one decision pass per
+frame (Figure~\ref{fig:rule_based_decision_tree}). If the cylinder is
+not reliably located this frame, either YOLOv8 found nothing, or the
+detected box implies a physically impossible jump from the previous
+frame (more than \texttt{max\_jump} = 800~px/s, which rejects spurious
+detections elsewhere in the scene), a miss counter increments;
+\texttt{lost\_frames} = 10 consecutive misses trigger LOST, otherwise
+the previous state is kept. When the cylinder is reliably located,
+its raw per-frame pixel displacement and a rolling-average smoothed
+velocity (over \texttt{vel\_window} = 5 frames) drive the remaining
+checks: \texttt{spike\_frames} = 2 consecutive frames at or above
+\texttt{vel\_drop} = 50~px/frame trigger DROPPED outright, regardless
+of the current state; a cylinder already DROPPED returns to
+STATIONARY once it has settled (\texttt{settle\_frames} = 5
+consecutive frames below \texttt{vel\_stat} = 2~px/frame) or after a
+\texttt{drop\_timeout} = 2~s ceiling, in case it comes to rest still
+slightly jittering; a cylinder that was LOST and has just reappeared
+goes straight to HELD rather than STATIONARY, since reappearing
+implies motion; otherwise, the settle counter alone decides between
+STATIONARY and HELD. The counters (\texttt{spike\_frames},
+\texttt{settle\_frames}, \texttt{lost\_frames}) all exist to debounce
+single-frame noise, since a bare threshold on raw displacement
+flickered between states.
+
+\begin{figure}[h]
+\centering
+\begin{forest}
+for tree={
+  draw,
+  rounded corners,
+  align=center,
+  edge={-latex},
+  l sep+=8pt,
+  s sep+=4pt,
+  font=\scriptsize,
+  text width=2.7cm,
+}
+[Cylinder reliably\\located this frame?
+  [No\\(missed, or jump $>$\\\texttt{max\_jump})
+    [Missed $\geq$\\\texttt{lost\_frames}\\frames in a row?
+      [Yes [\textbf{LOST}, very thick]]
+      [No [keep previous\\state]]
+    ]
+  ]
+  [Yes
+    [Raw disp. $\geq$\\\texttt{vel\_drop} for $\geq$\\\texttt{spike\_frames}\\in a row?
+      [Yes [\textbf{DROPPED}, very thick]]
+      [No
+        [Current\\state?
+          [DROPPED
+            [Settled $\geq$\\\texttt{settle\_frames}, or\\\texttt{drop\_timeout}\\elapsed?
+              [Yes [\textbf{STATIONARY}, very thick]]
+              [No [stay\\\textbf{DROPPED}]]
+            ]
+          ]
+          [LOST
+            [\textbf{HELD}\\(reappeared), very thick]
+          ]
+          [STATIONARY\\/ HELD
+            [Smoothed vel. $<$\\\texttt{vel\_stat} for $\geq$\\\texttt{settle\_frames}\\in a row?
+              [Yes [\textbf{STATIONARY}, very thick]]
+              [No [\textbf{HELD}, very thick]]
+            ]
+          ]
+        ]
+      ]
+    ]
+  ]
+]
+\end{forest}
+\caption{Per-frame decision logic of the rule-based object-state
+classifier, with default parameter values.}
+\label{fig:rule_based_decision_tree}
+\end{figure}
+
 The rule-based classifier's own output was used to bootstrap training
 data for a learned classifier. For each frame, its rule-based state
 label, pixel velocity, bounding-box position $(x, y)$, and PSM1
@@ -277,14 +359,16 @@ the ground truth.
 An XGBoost classifier was trained on this corrected data: 300 trees,
 maximum depth 6, learning rate 0.05. Each frame's feature vector
 combines its current values with those of the four preceding frames
-and their frame-to-frame differences. The model was validated with
-stratified group $k$-fold cross-validation, grouped by contiguous
-same-state segments rather than individual frames, so that
-near-duplicate frames from the same event could not leak across
-folds, and scored by macro-averaged F1, so that the rarer states
-(dropped, lost) count as much as the common ones (stationary, held).
-% TODO: cross-validated F1-macro (mean +/- std) once a final training
-% run is logged.
+and their frame-to-frame differences. The model was validated with stratified group $k$-fold
+cross-validation, grouped by session rather than by individual frame,
+so that no fold trains and tests on data from the same recording, and
+scored by macro-averaged F1, so that the rarer states (dropped, lost)
+count as much as the common ones (stationary, held). With only three
+labeled sessions available, and the rarest state present in all three,
+this reduces to 3-fold, leave-one-session-out cross-validation, which
+should be read as a rough signal rather than a precise estimate. Final
+performance, including the out-of-fold per-class breakdown, is
+reported in Section~\ref{subsec:results_state_classifier}.
 
 \subsection{3D Localization (Post-Hoc)}
 \label{subsec:localization}

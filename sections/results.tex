@@ -55,3 +55,130 @@ once per frame; its measured inference time, over [TODO] calls, was
 The force popup (Section~\ref{subsec:ground_contact}) appears once a
 trial ends; the measured time from trial end to the popup becoming
 visible was [TODO]~s.
+
+\subsection{Object Detection}
+\label{subsec:results_detection}
+
+Every measure in Table~\ref{tab:data_timing} depends on the YOLOv8
+detector locating the cylinder correctly first, so its accuracy is
+reported on its own rather than only inferred from the pipeline
+behaving well end to end.
+
+The detector (Section~\ref{subsec:object_detection}) was evaluated on
+a held-out test split of 85 frames, 82 of them containing the
+cylinder, drawn from the same recording sessions as training.
+Table~\ref{tab:detector_performance} summarizes the result.
+
+\begin{table}[h]
+\centering
+\begin{tabular}{lc}
+\hline
+Metric & Value \\
+\hline
+Precision & 0.996 \\
+Recall & 1.000 \\
+mAP50 & 0.995 \\
+mAP50-95 & 0.783 \\
+\hline
+\end{tabular}
+\caption{YOLOv8 cylinder detector performance on the held-out test
+split (85 images, 82 instances).}
+\label{tab:detector_performance}
+\end{table}
+
+The gap between mAP50 and mAP50-95 indicates that while the detector
+rarely misses or misfires on the cylinder, its boxes are not always
+tightly localized; since the orientation check
+(Section~\ref{subsec:angular_displacement}) segments color directly
+from this box, looser boxes are a more likely source of orientation
+error than missed detections.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.7\textwidth]{figures/BoxPR_curve.png}
+\caption{Precision-recall curve for the cylinder detector on the test
+split.}
+\label{fig:detector_pr_curve}
+\end{figure}
+% TODO: copy BoxPR_curve.png from the dvrk_shujiro training run into
+% figures/ before compiling.
+
+\subsection{Object State Classifier}
+\label{subsec:results_state_classifier}
+
+The XGBoost classifier (Section~\ref{subsec:object_state}) was
+trained on 13{,}098 labeled frames pooled from three sessions
+(4{,}046, 4{,}808, and 4{,}256 rows each before cleaning), covering
+73 stationary, 75 held, 44 dropped, and 5 lost events. Lost events
+were kept deliberately few: unlike the other three states, lost does
+not need to be learned from examples, since it is directly recoverable
+procedurally whenever the detector reports nothing for several
+consecutive frames (Section~\ref{subsec:object_state}). Because
+cross-validation is grouped by session (Section~\ref{subsec:object_state}),
+its 3-fold accuracy and F1-macro (Table~\ref{tab:xgb_cv_summary}) are
+a rough signal, not a precise estimate: each fold trains on two
+sessions and validates on a third the model has not seen any part of.
+
+\begin{table}[h]
+\centering
+\begin{tabular}{lc}
+\hline
+Metric & Value (mean $\pm$ std) \\
+\hline
+Accuracy & 0.893 $\pm$ 0.049 \\
+F1-macro & 0.722 $\pm$ 0.111 \\
+\hline
+\end{tabular}
+\caption{3-fold, leave-one-session-out cross-validation summary for
+the object-state classifier.}
+\label{tab:xgb_cv_summary}
+\end{table}
+
+The pooled out-of-fold predictions (Figure~\ref{fig:xgb_oof_metrics})
+give the genuine per-class generalization estimate, as opposed to the
+near-100\% scores the same model gets when evaluated on the data it
+was trained on. Stationary and held, the two most common states, are
+classified reliably (F1 0.92 and 0.90). Dropped is weaker (F1 0.72,
+recall 0.64), and lost is the least reliable of the four (F1 0.46,
+recall 0.30). This is expected rather than a data-scarcity problem to
+fix: as noted above, lost was deliberately underrepresented in
+training because it is not something the classifier needs to learn,
+being directly recoverable from the detector's own miss count. The
+confusion matrix (Figure~\ref{fig:xgb_oof_confusion})
+shows most of that error going one direction, lost frames misread as
+held (216 of 308), rather than spread evenly across the other states.
+
+The top feature importances (Figure~\ref{fig:xgb_feature_importance}) are
+dominated by lagged pixel velocity (\texttt{vel\_px\_s\_lag1-4}),
+consistent with state depending on recent motion history rather than
+any single frame's position; PSM1's $z$-position and orientation, and
+the cylinder's own bounding-box position, follow behind velocity as
+secondary signals.
+
+\begin{figure}[h]
+\centering
+\begin{subfigure}[b]{0.32\textwidth}
+\centering
+\includegraphics[width=\textwidth]{figures/cylinder_state_xgb_v2_per_class_metrics.png}
+\caption{Per-class performance}
+\label{fig:xgb_oof_metrics}
+\end{subfigure}
+\hfill
+\begin{subfigure}[b]{0.32\textwidth}
+\centering
+\includegraphics[width=\textwidth]{figures/cylinder_state_xgb_v2_confusion_matrix.png}
+\caption{Confusion matrix}
+\label{fig:xgb_oof_confusion}
+\end{subfigure}
+\hfill
+\begin{subfigure}[b]{0.32\textwidth}
+\centering
+\includegraphics[width=\textwidth]{figures/cylinder_state_xgb_v2_feature_importance.png}
+\caption{Feature importances}
+\label{fig:xgb_feature_importance}
+\end{subfigure}
+\caption{Out-of-fold evaluation of the object-state classifier: (a)
+per-class precision/recall/F1, (b) confusion matrix, (c) top-15
+feature importances.}
+\label{fig:xgb_summary}
+\end{figure}
